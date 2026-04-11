@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "Bash(mkdir -p \"C:\\\\Users\\\\Brian\\\\gymtrack-backend\\\\routes\")",
+      "Bash(mkdir -p \"C:\\\\Users\\\\Brian\\\\gymtrack-backend\\\\middleware\")",
+      "Bash(mkdir -p \"C:\\\\Users\\\\Brian\\\\gymtrack-backend\\\\scripts\")"
+    ]
+  }
+}
