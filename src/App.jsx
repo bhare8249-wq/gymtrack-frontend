@@ -516,61 +516,158 @@ function RestTimer() {
   );
 }
 
-// ── Line Chart ────────────────────────────────────────────────────────
-function LineChart({ points, lineColor = accent, allTimeMax }) {
+// ── Dual Line Chart (Weight + Reps) ──────────────────────────────────
+const WEIGHT_COLOR = "#5B9BD5"; // Steel Blue
+const REPS_COLOR   = "#5bb85b"; // Green
+
+function LineChart({ points, lineColor = WEIGHT_COLOR, allTimeMax }) {
+  // Legacy single-line fallback — wraps DualLineChart
+  return <DualLineChart points={points} lineColor={lineColor} allTimeMax={allTimeMax} />;
+}
+
+function DualLineChart({ points, lineColor = WEIGHT_COLOR, allTimeMax }) {
   const t = useT();
   const [hovered, setHovered] = useState(null);
   if (!points.length) return <div style={{ color: t.textMuted, fontSize: 12, padding: "16px 0", textAlign: "center" }}>Log at least one session to see this chart</div>;
-  const W = 340, H = 130, padL = 38, padR = 16, padT = 24, padB = 36;
+
+  const W = 340, H = 150, padL = 38, padR = 38, padT = 20, padB = 32;
   const plotW = W - padL - padR, plotH = H - padT - padB;
-  const vals = points.map(p => p.value);
-  const minVal = Math.min(...vals), maxVal = Math.max(...vals), valRange = maxVal - minVal || 1;
-  const yTicks = 4;
-  const yTickVals = Array.from({ length: yTicks + 1 }, (_, i) => minVal + (valRange / yTicks) * i);
-  const toX = (i) => padL + (points.length === 1 ? plotW / 2 : (i / (points.length - 1)) * plotW);
-  const toY = (v) => padT + plotH - ((v - minVal) / valRange) * plotH;
-  const polyline = points.map((p, i) => `${toX(i)},${toY(p.value)}`).join(" ");
-  const areaPath = points.length > 1
-    ? `M${toX(0)},${toY(points[0].value)} ${points.slice(1).map((p, i) => `L${toX(i+1)},${toY(p.value)}`).join(" ")} L${toX(points.length-1)},${padT+plotH} L${toX(0)},${padT+plotH} Z`
+
+  // Weight scale (left axis)
+  const wVals = points.map(p => p.value);
+  const wMin = Math.min(...wVals), wMax = Math.max(...wVals), wRange = wMax - wMin || 1;
+
+  // Reps scale (right axis) — only if reps data exists
+  const hasReps = points.some(p => p.reps > 0);
+  const rVals = points.map(p => p.reps || 0);
+  const rMin = Math.max(0, Math.min(...rVals) - 1), rMax = Math.max(...rVals) + 1, rRange = rMax - rMin || 1;
+
+  const toX  = (i) => padL + (points.length === 1 ? plotW / 2 : (i / (points.length - 1)) * plotW);
+  const toYw = (v) => padT + plotH - ((v - wMin) / wRange) * plotH;
+  const toYr = (v) => padT + plotH - ((v - rMin) / rRange) * plotH;
+
+  const wPolyline = points.map((p, i) => `${toX(i)},${toYw(p.value)}`).join(" ");
+  const rPolyline = hasReps ? points.map((p, i) => `${toX(i)},${toYr(p.reps || 0)}`).join(" ") : "";
+
+  const wAreaPath = points.length > 1
+    ? `M${toX(0)},${toYw(points[0].value)} ${points.slice(1).map((p,i) => `L${toX(i+1)},${toYw(p.value)}`).join(" ")} L${toX(points.length-1)},${padT+plotH} L${toX(0)},${padT+plotH} Z`
     : "";
-  const gradId = `grad-${lineColor.replace("#","")}`;
+
+  const yTickVals = Array.from({ length: 4 }, (_, i) => wMin + (wRange / 3) * i);
+  const rTickVals = hasReps ? Array.from({ length: 4 }, (_, i) => Math.round(rMin + (rRange / 3) * i)) : [];
+
+  const wGradId = `wgrad-${lineColor.replace("#","")}`;
+
   return (
-    <div style={{ overflowX: "auto" }}>
-      <svg width={W} height={H} style={{ display: "block", overflow: "visible" }}>
-        <defs>
-          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={lineColor} stopOpacity="0.18" />
-            <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {yTickVals.map((v, i) => (
-          <g key={i}>
-            <line x1={padL} y1={toY(v)} x2={W-padR} y2={toY(v)} stroke={t.border} strokeWidth="1" />
-            <text x={padL-5} y={toY(v)+4} textAnchor="end" fontSize="9" fill={t.textMuted}>{Math.round(v)}</text>
-          </g>
-        ))}
-        {areaPath && <path d={areaPath} fill={`url(#${gradId})`} />}
-        {points.length > 1 && <polyline points={polyline} fill="none" stroke={lineColor} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />}
-        {points.map((p, i) => {
-          const cx = toX(i), cy = toY(p.value);
-          const isPR = p.value === allTimeMax, isHov = hovered === i;
-          return (
+    <div>
+      <div style={{ overflowX: "auto" }}>
+        <svg width={W} height={H} style={{ display: "block", overflow: "visible" }}>
+          <defs>
+            <linearGradient id={wGradId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={WEIGHT_COLOR} stopOpacity="0.15" />
+              <stop offset="100%" stopColor={WEIGHT_COLOR} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+
+          {/* Grid + left (weight) axis labels */}
+          {yTickVals.map((v, i) => (
             <g key={i}>
-              <rect x={cx-16} y={padT} width={32} height={plotH} fill="transparent" style={{ cursor: "pointer" }} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)} />
-              <circle cx={cx} cy={cy} r={isPR ? 6 : isHov ? 5 : 3.5} fill={isPR ? "#ff9500" : lineColor} stroke={isHov ? "#fff" : "transparent"} strokeWidth="2" />
-              {isPR && <text x={cx} y={cy-10} textAnchor="middle" fontSize="11">👑</text>}
-              {isHov && (() => {
-                const ttW = 80, ttH = 34, ttX = Math.min(Math.max(cx-ttW/2, padL), W-padR-ttW), ttY = cy-ttH-10;
-                return <g><rect x={ttX} y={ttY} width={ttW} height={ttH} rx={6} fill={t.surfaceHigh} /><text x={ttX+ttW/2} y={ttY+13} textAnchor="middle" fontSize="11" fontWeight="700" fill={isPR ? "#ff9500" : t.text}>{p.value} lbs</text><text x={ttX+ttW/2} y={ttY+26} textAnchor="middle" fontSize="9" fill={t.textMuted}>{formatDay(p.date)}</text></g>;
-              })()}
-              {(points.length <= 6 || i === 0 || i === points.length-1 || i % Math.ceil(points.length/5) === 0) && (
-                <text x={cx} y={H-4} textAnchor="middle" fontSize="9" fill={t.textMuted} transform={points.length > 8 ? `rotate(-35,${cx},${H-4})` : ""}>{formatDay(p.date)}</text>
-              )}
+              <line x1={padL} y1={toYw(v)} x2={W-padR} y2={toYw(v)} stroke={t.border} strokeWidth="1" strokeDasharray={i === 0 ? "0" : "3,3"} />
+              <text x={padL-5} y={toYw(v)+4} textAnchor="end" fontSize="9" fill={WEIGHT_COLOR} opacity="0.8">{Math.round(v)}</text>
             </g>
-          );
-        })}
-        <line x1={padL} y1={padT} x2={padL} y2={padT+plotH} stroke={t.border} strokeWidth="1" />
-      </svg>
+          ))}
+
+          {/* Right (reps) axis labels */}
+          {hasReps && rTickVals.map((v, i) => (
+            <text key={i} x={W-padR+5} y={toYr(v)+4} textAnchor="start" fontSize="9" fill={REPS_COLOR} opacity="0.8">{v}</text>
+          ))}
+
+          {/* Weight area fill */}
+          {wAreaPath && <path d={wAreaPath} fill={`url(#${wGradId})`} />}
+
+          {/* Reps line (dashed, behind weight line) */}
+          {hasReps && points.length > 1 && (
+            <polyline points={rPolyline} fill="none" stroke={REPS_COLOR} strokeWidth="2" strokeDasharray="5,3" strokeLinejoin="round" strokeLinecap="round" opacity="0.85" />
+          )}
+
+          {/* Weight line (solid, on top) */}
+          {points.length > 1 && (
+            <polyline points={wPolyline} fill="none" stroke={WEIGHT_COLOR} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+          )}
+
+          {/* Dots + hover zones */}
+          {points.map((p, i) => {
+            const cx = toX(i);
+            const cyw = toYw(p.value);
+            const cyr = hasReps ? toYr(p.reps || 0) : null;
+            const isPR = p.value === allTimeMax;
+            const isHov = hovered === i;
+            return (
+              <g key={i}>
+                {/* Hover capture zone */}
+                <rect x={cx-16} y={padT} width={32} height={plotH} fill="transparent" style={{ cursor: "pointer" }}
+                  onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}
+                  onTouchStart={() => setHovered(i)} onTouchEnd={() => setTimeout(() => setHovered(null), 1400)}
+                />
+                {/* Weight dot */}
+                <circle cx={cx} cy={cyw} r={isPR ? 5.5 : isHov ? 5 : 3.5}
+                  fill={isPR ? "#ff9500" : WEIGHT_COLOR}
+                  stroke={isHov ? "#fff" : "transparent"} strokeWidth="2" />
+                {isPR && <text x={cx} y={cyw-10} textAnchor="middle" fontSize="11">👑</text>}
+                {/* Reps dot */}
+                {hasReps && cyr !== null && (
+                  <circle cx={cx} cy={cyr} r={isHov ? 4.5 : 3}
+                    fill={REPS_COLOR}
+                    stroke={isHov ? "#fff" : "transparent"} strokeWidth="1.5" />
+                )}
+                {/* Tooltip */}
+                {isHov && (() => {
+                  const ttW = 96, ttH = hasReps ? 44 : 34;
+                  const ttX = Math.min(Math.max(cx - ttW/2, padL), W - padR - ttW);
+                  const ttY = Math.min(cyw, hasReps && cyr !== null ? cyr : cyw) - ttH - 10;
+                  return (
+                    <g>
+                      <rect x={ttX} y={ttY} width={ttW} height={ttH} rx={7}
+                        fill={t.surfaceHigh} stroke={t.border} strokeWidth="1" />
+                      <text x={ttX+ttW/2} y={ttY+14} textAnchor="middle" fontSize="11" fontWeight="700"
+                        fill={isPR ? "#ff9500" : WEIGHT_COLOR}>{p.value} lbs</text>
+                      {hasReps && p.reps > 0 && (
+                        <text x={ttX+ttW/2} y={ttY+28} textAnchor="middle" fontSize="11" fontWeight="700"
+                          fill={REPS_COLOR}>{p.reps} reps</text>
+                      )}
+                      <text x={ttX+ttW/2} y={ttY+ttH-5} textAnchor="middle" fontSize="9"
+                        fill={t.textMuted}>{formatDay(p.date)}</text>
+                    </g>
+                  );
+                })()}
+                {/* X-axis date labels */}
+                {(points.length <= 6 || i === 0 || i === points.length-1 || i % Math.ceil(points.length/5) === 0) && (
+                  <text x={cx} y={H-4} textAnchor="middle" fontSize="9" fill={t.textMuted}
+                    transform={points.length > 8 ? `rotate(-35,${cx},${H-4})` : ""}>{formatDay(p.date)}</text>
+                )}
+              </g>
+            );
+          })}
+
+          {/* Axis lines */}
+          <line x1={padL} y1={padT} x2={padL} y2={padT+plotH} stroke={t.border} strokeWidth="1" />
+          {hasReps && <line x1={W-padR} y1={padT} x2={W-padR} y2={padT+plotH} stroke={t.border} strokeWidth="1" />}
+        </svg>
+      </div>
+
+      {/* Legend */}
+      <div style={{ display: "flex", gap: 16, marginTop: 6, fontSize: 11, color: t.textMuted }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <svg width="20" height="8"><line x1="0" y1="4" x2="20" y2="4" stroke={WEIGHT_COLOR} strokeWidth="2.5" /></svg>
+          <span style={{ color: WEIGHT_COLOR }}>Weight (lbs)</span>
+        </span>
+        {hasReps && (
+          <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <svg width="20" height="8"><line x1="0" y1="4" x2="20" y2="4" stroke={REPS_COLOR} strokeWidth="2" strokeDasharray="5,3" /></svg>
+            <span style={{ color: REPS_COLOR }}>Reps</span>
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -1463,7 +1560,14 @@ export default function App() {
 
   const progressData = (exName) =>
     data.workouts.filter(w => w.exercises.some(e => e.name === exName))
-      .map(w => { const ex = w.exercises.find(e => e.name === exName); const best = Math.max(...ex.sets.map(s => parseFloat(s.weight) || 0)); return { date: w.date, value: best }; })
+      .map(w => {
+        const ex = w.exercises.find(e => e.name === exName);
+        const bestWeight = Math.max(...ex.sets.map(s => parseFloat(s.weight) || 0));
+        // Best reps at the heaviest weight logged that session
+        const heavySets = ex.sets.filter(s => parseFloat(s.weight) === bestWeight);
+        const bestReps = Math.max(...heavySets.map(s => parseInt(s.reps) || 0));
+        return { date: w.date, value: bestWeight, reps: bestReps };
+      })
       .reverse();
 
   const startWorkout = () => { if (!workout) setWorkout({ date: todayISO(), startTime: Date.now(), exercises: [] }); setView("log"); };
