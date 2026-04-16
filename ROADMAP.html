@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>GymTrack — Feature Roadmap</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { background: #0d0d0d; color: #fff; font-family: -apple-system, 'DM Sans', sans-serif; max-width: 480px; margin: 0 auto; padding: 24px 16px 60px; }
+    h1 { font-family: Georgia, serif; font-size: 11px; color: #444; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px; }
+    .logo { font-size: 36px; font-weight: 900; letter-spacing: 2px; margin-bottom: 4px; }
+    .logo span { color: #e8ff47; }
+    .subtitle { font-size: 13px; color: #555; margin-bottom: 28px; }
+    .progress-bar-wrap { background: #1a1a1a; border-radius: 20px; height: 8px; margin-bottom: 6px; overflow: hidden; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, #e8ff47, #b8d400); border-radius: 20px; transition: width 0.4s ease; }
+    .progress-label { font-size: 12px; color: #555; margin-bottom: 28px; }
+    .progress-label span { color: #e8ff47; font-weight: 700; }
+    .section { margin-bottom: 28px; }
+    .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #1e1e1e; }
+    .section-icon { font-size: 18px; }
+    .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #888; }
+    .section-count { margin-left: auto; font-size: 11px; color: #444; background: #1a1a1a; border-radius: 20px; padding: 2px 9px; }
+    .item { display: flex; align-items: flex-start; gap: 12px; padding: 13px 14px; background: #111; border: 1px solid #1e1e1e; border-radius: 14px; margin-bottom: 8px; cursor: pointer; transition: border-color 0.2s, background 0.2s; user-select: none; -webkit-user-select: none; }
+    .item:active { transform: scale(0.98); }
+    .item.done { background: #0f1a0a; border-color: #1a3a14; }
+    .item.done .item-title { text-decoration: line-through; color: #444; }
+    .item.done .item-desc { color: #333; }
+    .item.high .priority { color: #ff5b5b; background: rgba(255,91,91,0.1); border-color: rgba(255,91,91,0.2); }
+    .item.medium .priority { color: #ff9500; background: rgba(255,149,0,0.1); border-color: rgba(255,149,0,0.2); }
+    .item.low .priority { color: #5b9bd5; background: rgba(91,155,213,0.1); border-color: rgba(91,155,213,0.2); }
+    .checkbox { width: 22px; height: 22px; border-radius: 7px; border: 1.5px solid #333; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; transition: all 0.2s; }
+    .item.done .checkbox { background: #4a9940; border-color: #4a9940; }
+    .checkmark { color: #fff; font-size: 13px; font-weight: 700; opacity: 0; transition: opacity 0.15s; }
+    .item.done .checkmark { opacity: 1; }
+    .item-body { flex: 1; min-width: 0; }
+    .item-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+    .item-title { font-size: 14px; font-weight: 600; color: #fff; }
+    .priority { font-size: 10px; font-weight: 700; border-radius: 6px; padding: 2px 7px; border: 1px solid transparent; letter-spacing: 0.3px; text-transform: uppercase; }
+    .item-desc { font-size: 12px; color: #555; line-height: 1.5; }
+    .filter-bar { display: flex; gap: 6px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 4px; }
+    .filter-bar::-webkit-scrollbar { display: none; }
+    .filter-btn { background: #111; border: 1px solid #222; border-radius: 20px; color: #555; font-size: 12px; font-weight: 700; padding: 6px 14px; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+    .filter-btn.active { background: #e8ff47; color: #000; border-color: #e8ff47; }
+    .stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 24px; }
+    .stat-card { background: #111; border: 1px solid #1e1e1e; border-radius: 12px; padding: 12px 8px; text-align: center; }
+    .stat-val { font-size: 24px; font-weight: 900; color: #e8ff47; }
+    .stat-lbl { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+    .reset-btn { background: transparent; border: 1px solid #222; border-radius: 10px; color: #444; font-size: 12px; padding: 8px 16px; cursor: pointer; margin-top: 12px; display: block; margin-left: auto; }
+    .reset-btn:hover { color: #666; border-color: #333; }
+  </style>
+</head>
+<body>
+
+  <h1>Product Roadmap</h1>
+  <div class="logo">GYM<span>TRACK</span></div>
+  <div class="subtitle">Feature checklist — tap to mark complete</div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-val" id="stat-done">0</div><div class="stat-lbl">Done</div></div>
+    <div class="stat-card"><div class="stat-val" id="stat-left">0</div><div class="stat-lbl">Remaining</div></div>
+    <div class="stat-card"><div class="stat-val" id="stat-pct">0%</div><div class="stat-lbl">Complete</div></div>
+  </div>
+
+  <div class="progress-bar-wrap"><div class="progress-bar" id="prog-bar" style="width:0%"></div></div>
+  <div class="progress-label" id="prog-label">0 of 0 features complete</div>
+
+  <div class="filter-bar">
+    <button class="filter-btn active" onclick="setFilter('all')">All</button>
+    <button class="filter-btn" onclick="setFilter('high')">🔴 High</button>
+    <button class="filter-btn" onclick="setFilter('medium')">🟠 Medium</button>
+    <button class="filter-btn" onclick="setFilter('low')">🔵 Low</button>
+    <button class="filter-btn" onclick="setFilter('done')">✅ Done</button>
+    <button class="filter-btn" onclick="setFilter('todo')">⬜ Todo</button>
+  </div>
+
+  <div id="checklist"></div>
+  <button class="reset-btn" onclick="resetAll()">Reset all</button>
+
+  <script>
+    const FEATURES = [
+      // ── UX & Interactions ──────────────────────────────────────────────
+      {
+        section: "UX & Interactions", icon: "✨", id: "swipe-delete",
+        title: "Swipe to delete workouts",
+        desc: "Swipe left on a history card to reveal a delete button — faster than tap → expand → delete.",
+        priority: "high"
+      },
+      {
+        section: "UX & Interactions", icon: "✨", id: "swipe-nav",
+        title: "Swipe between tabs",
+        desc: "Swipe left/right on the main content area to switch between Home, Log, History, Progress, Profile.",
+        priority: "high"
+      },
+      {
+        section: "UX & Interactions", icon: "✨", id: "haptic",
+        title: "Haptic feedback",
+        desc: "Subtle vibration when completing a set, finishing a workout, or hitting a PR.",
+        priority: "medium"
+      },
+      {
+        section: "UX & Interactions", icon: "✨", id: "animated-finish",
+        title: "Animated workout complete screen",
+        desc: "Full-screen celebration moment with confetti, workout stats summary (sets, reps, duration, PRs hit).",
+        priority: "high"
+      },
+      {
+        section: "UX & Interactions", icon: "✨", id: "keyboard-dismiss",
+        title: "Tap outside to dismiss keyboard",
+        desc: "Tapping outside any input closes the keyboard — standard mobile behaviour.",
+        priority: "medium"
+      },
+      // ── Workout Features ──────────────────────────────────────────────
+      {
+        section: "Workout Features", icon: "🏋️", id: "quick-log",
+        title: "Quick-log last workout",
+        desc: "One tap to reload the exact exercises and sets from the most recent session as a starting template.",
+        priority: "high"
+      },
+      {
+        section: "Workout Features", icon: "🏋️", id: "plate-calc",
+        title: "Plate calculator",
+        desc: "Enter a target weight → app shows exactly which plates to load on each side of the bar.",
+        priority: "medium"
+      },
+      {
+        section: "Workout Features", icon: "🏋️", id: "one-rm",
+        title: "1RM estimator",
+        desc: "Automatically estimates your one-rep max from logged sets using the Epley formula. Shows on Progress tab.",
+        priority: "medium"
+      },
+      {
+        section: "Workout Features", icon: "🏋️", id: "supersets",
+        title: "Superset support",
+        desc: "Group two exercises together as a superset — alternate between them with a single tap.",
+        priority: "low"
+      },
+      {
+        section: "Workout Features", icon: "🏋️", id: "warmup-sets",
+        title: "Warm-up set marker",
+        desc: "Flag individual sets as warm-up so they're excluded from PR calculations and charts.",
+        priority: "low"
+      },
+      {
+        section: "Workout Features", icon: "🏋️", id: "rest-timer-auto",
+        title: "Auto-start rest timer after each set",
+        desc: "Timer automatically starts counting down the moment you log a set — no manual tap needed.",
+        priority: "high"
+      },
+      {
+        section: "Workout Features", icon: "🏋️", id: "exercise-notes",
+        title: "Notes per exercise",
+        desc: "Add a short note to any exercise (e.g. 'felt tight' or 'increase next time').",
+        priority: "medium"
+      },
+      // ── Progress & Analytics ──────────────────────────────────────────
+      {
+        section: "Progress & Analytics", icon: "📈", id: "streak",
+        title: "Workout streak counter",
+        desc: "Shows consecutive days/weeks trained with a flame icon. Resets if you miss a day. Huge motivation driver.",
+        priority: "high"
+      },
+      {
+        section: "Progress & Analytics", icon: "📈", id: "bodyweight-chart",
+        title: "Bodyweight chart on Home",
+        desc: "Mini bodyweight trend graph on the Home screen so you see physical progress at a glance.",
+        priority: "medium"
+      },
+      {
+        section: "Progress & Analytics", icon: "📈", id: "volume-chart",
+        title: "Weekly volume chart",
+        desc: "Bar chart showing total weekly training volume (sets × reps × weight) over time.",
+        priority: "medium"
+      },
+      {
+        section: "Progress & Analytics", icon: "📈", id: "muscle-heatmap",
+        title: "Muscle group heatmap",
+        desc: "Visual body map that highlights which muscle groups you've trained this week.",
+        priority: "low"
+      },
+      {
+        section: "Progress & Analytics", icon: "📈", id: "pr-history",
+        title: "PR history log",
+        desc: "Dedicated screen showing every personal record ever set, sorted by date and exercise.",
+        priority: "medium"
+      },
+      // ── Notifications ─────────────────────────────────────────────────
+      {
+        section: "Notifications & Reminders", icon: "🔔", id: "push-notif",
+        title: "Push notifications",
+        desc: "Rest timer alert when the phone is locked. Requires PWA or native app wrapper.",
+        priority: "high"
+      },
+      {
+        section: "Notifications & Reminders", icon: "🔔", id: "workout-reminder",
+        title: "Daily workout reminder",
+        desc: "Optional push notification at a user-set time: 'Time to train, [name]!'",
+        priority: "medium"
+      },
+      {
+        section: "Notifications & Reminders", icon: "🔔", id: "rest-day-reminder",
+        title: "Rest day detection",
+        desc: "If no workout is logged after X days, prompt the user to get back on track.",
+        priority: "low"
+      },
+      // ── App Distribution ──────────────────────────────────────────────
+      {
+        section: "App Distribution", icon: "📱", id: "pwa",
+        title: "PWA — Install to Home Screen",
+        desc: "Full Progressive Web App setup: manifest, service worker, offline support. Users can install from browser — no App Store needed.",
+        priority: "high"
+      },
+      {
+        section: "App Distribution", icon: "📱", id: "custom-domain",
+        title: "Custom domain (e.g. gymtrack.app)",
+        desc: "Buy a domain and point it to Vercel. Makes the app feel professional and is required before App Store submission.",
+        priority: "high"
+      },
+      {
+        section: "App Distribution", icon: "📱", id: "app-store",
+        title: "Apple App Store submission",
+        desc: "Wrap the web app using Capacitor, add native iOS features, submit to App Store. Requires $99/yr Apple Developer account.",
+        priority: "medium"
+      },
+      {
+        section: "App Distribution", icon: "📱", id: "play-store",
+        title: "Google Play Store submission",
+        desc: "Wrap with Capacitor for Android, submit to Play Store. One-time $25 developer fee.",
+        priority: "medium"
+      },
+      // ── Account & Social ──────────────────────────────────────────────
+      {
+        section: "Account & Social", icon: "👤", id: "google-auth",
+        title: "Sign in with Google",
+        desc: "OAuth2 Google login — removes password friction entirely. Most users expect this.",
+        priority: "high"
+      },
+      {
+        section: "Account & Social", icon: "👤", id: "apple-auth",
+        title: "Sign in with Apple",
+        desc: "Required by Apple for App Store apps that offer social login. Provides privacy-first login.",
+        priority: "medium"
+      },
+      {
+        section: "Account & Social", icon: "👤", id: "profile-photo",
+        title: "Profile photo upload",
+        desc: "Let users upload an avatar shown on their profile and in the admin panel.",
+        priority: "low"
+      },
+      {
+        section: "Account & Social", icon: "👤", id: "share-workout",
+        title: "Share workout as image",
+        desc: "Generate a shareable card (like Strava) showing workout stats — share to Instagram, iMessage, etc.",
+        priority: "medium"
+      },
+      // ── Theme & Accessibility ─────────────────────────────────────────
+      {
+        section: "Theme & Accessibility", icon: "🎨", id: "auto-theme",
+        title: "Auto dark/light mode",
+        desc: "Follow the device system theme automatically so the app always matches the phone's appearance.",
+        priority: "medium"
+      },
+      {
+        section: "Theme & Accessibility", icon: "🎨", id: "accent-color",
+        title: "Custom accent colour",
+        desc: "Let users pick their accent colour from a preset palette (yellow, blue, green, red, etc.).",
+        priority: "low"
+      },
+      {
+        section: "Theme & Accessibility", icon: "🎨", id: "large-text",
+        title: "Large text / accessibility mode",
+        desc: "Increase all font sizes by 20% for users who need it. Follows iOS accessibility settings.",
+        priority: "low"
+      },
+      // ── Data & Integrations ───────────────────────────────────────────
+      {
+        section: "Data & Integrations", icon: "🔗", id: "apple-health",
+        title: "Apple Health integration",
+        desc: "Write workout data to Apple Health automatically after each session.",
+        priority: "medium"
+      },
+      {
+        section: "Data & Integrations", icon: "🔗", id: "google-fit",
+        title: "Google Fit integration",
+        desc: "Sync workouts to Google Fit for Android users.",
+        priority: "medium"
+      },
+      {
+        section: "Data & Integrations", icon: "🔗", id: "import-csv",
+        title: "Import data from CSV",
+        desc: "Let users import historical workout data from a CSV file (e.g. from another app).",
+        priority: "low"
+      },
+      {
+        section: "Data & Integrations", icon: "🔗", id: "offline",
+        title: "Full offline support",
+        desc: "App works completely without internet. Data syncs to the cloud when connection returns.",
+        priority: "high"
+      },
+    ];
+
+    // Group by section
+    const sections = {};
+    FEATURES.forEach(f => {
+      if (!sections[f.section]) sections[f.section] = { icon: f.icon, items: [] };
+      sections[f.section].items.push(f);
+    });
+
+    let activeFilter = "all";
+    const SHIPPED = ["animated-finish","streak","quick-log","rest-timer-auto","swipe-nav","pwa","google-auth"];
+    const _saved = JSON.parse(localStorage.getItem("gt-roadmap-done") || "null");
+    let done = _saved ? [...new Set([...SHIPPED, ..._saved])] : [...SHIPPED];
+    localStorage.setItem("gt-roadmap-done", JSON.stringify(done));
+
+    function setFilter(f) {
+      activeFilter = f;
+      document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".filter-btn").forEach(b => { if (b.textContent.toLowerCase().includes(f) || (f === "all" && b.textContent === "All")) b.classList.add("active"); });
+      render();
+    }
+
+    function toggle(id) {
+      if (done.includes(id)) done = done.filter(d => d !== id);
+      else done.push(id);
+      localStorage.setItem("gt-roadmap-done", JSON.stringify(done));
+      render();
+    }
+
+    function resetAll() {
+      if (confirm("Reset all checkmarks?")) { done = []; localStorage.removeItem("gt-roadmap-done"); render(); }
+    }
+
+    function render() {
+      const total = FEATURES.length;
+      const doneCount = FEATURES.filter(f => done.includes(f.id)).length;
+      const pct = total ? Math.round((doneCount / total) * 100) : 0;
+
+      document.getElementById("stat-done").textContent = doneCount;
+      document.getElementById("stat-left").textContent = total - doneCount;
+      document.getElementById("stat-pct").textContent = pct + "%";
+      document.getElementById("prog-bar").style.width = pct + "%";
+      document.getElementById("prog-label").innerHTML = `<span>${doneCount}</span> of ${total} features complete`;
+
+      const container = document.getElementById("checklist");
+      container.innerHTML = "";
+
+      Object.entries(sections).forEach(([name, sec]) => {
+        let items = sec.items;
+        if (activeFilter === "high") items = items.filter(i => i.priority === "high");
+        if (activeFilter === "medium") items = items.filter(i => i.priority === "medium");
+        if (activeFilter === "low") items = items.filter(i => i.priority === "low");
+        if (activeFilter === "done") items = items.filter(i => done.includes(i.id));
+        if (activeFilter === "todo") items = items.filter(i => !done.includes(i.id));
+        if (!items.length) return;
+
+        const secDone = items.filter(i => done.includes(i.id)).length;
+        const secEl = document.createElement("div");
+        secEl.className = "section";
+        secEl.innerHTML = `
+          <div class="section-header">
+            <span class="section-icon">${sec.icon}</span>
+            <span class="section-title">${name}</span>
+            <span class="section-count">${secDone}/${items.length}</span>
+          </div>
+          ${items.map(item => `
+            <div class="item ${item.priority} ${done.includes(item.id) ? "done" : ""}" onclick="toggle('${item.id}')">
+              <div class="checkbox"><span class="checkmark">✓</span></div>
+              <div class="item-body">
+                <div class="item-top">
+                  <span class="item-title">${item.title}</span>
+                  <span class="priority">${item.priority}</span>
+                </div>
+                <div class="item-desc">${item.desc}</div>
+              </div>
+            </div>
+          `).join("")}
+        `;
+        container.appendChild(secEl);
+      });
+    }
+
+    render();
+  </script>
+</body>
+</html>
