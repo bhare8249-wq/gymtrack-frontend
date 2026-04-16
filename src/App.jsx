@@ -116,7 +116,7 @@ const makeStyles = (t) => ({
 // v1.2.1  2026-04-08  Profile: Security Settings added — change email and password with verification flow
 // v1.2.2  2026-04-08  Fixed critical bug: useStorage useEffect was resetting user data on profile edits
 // v2.0.0  2026-04-16  Rebranded to Rep Set. Steel Blue colour system. Visual overhaul. 1RM estimator, exercise notes, plate calculator.
-const APP_VERSION = "0.3.3";
+const APP_VERSION = "0.3.4";
 const BUILD_DATE  = "2026-04-16";
 
 const getUserKey = (u) => `gymtrack-data-${u}`;
@@ -521,12 +521,11 @@ function RestTimer() {
 const WEIGHT_COLOR = "#5B9BD5"; // Steel Blue
 const REPS_COLOR   = "#5bb85b"; // Green
 
-function LineChart({ points, lineColor = WEIGHT_COLOR, allTimeMax }) {
-  // Legacy single-line fallback — wraps DualLineChart
-  return <DualLineChart points={points} lineColor={lineColor} allTimeMax={allTimeMax} />;
+function LineChart({ points, lineColor = WEIGHT_COLOR }) {
+  return <DualLineChart points={points} lineColor={lineColor} />;
 }
 
-function DualLineChart({ points, lineColor = WEIGHT_COLOR, allTimeMax }) {
+function DualLineChart({ points, lineColor = WEIGHT_COLOR }) {
   const t = useT();
   const [hovered, setHovered] = useState(null);
   if (!points.length) return <div style={{ color: t.textMuted, fontSize: 12, padding: "16px 0", textAlign: "center" }}>Log at least one session to see this chart</div>;
@@ -546,6 +545,16 @@ function DualLineChart({ points, lineColor = WEIGHT_COLOR, allTimeMax }) {
   const toX  = (i) => padL + (points.length === 1 ? plotW / 2 : (i / (points.length - 1)) * plotW);
   const toYw = (v) => padT + plotH - ((v - wMin) / wRange) * plotH;
   const toYr = (v) => padT + plotH - ((v - rMin) / rRange) * plotH;
+
+  // Running PR: a point is a PR if it beats all previous points on weight,
+  // or ties weight with strictly more reps
+  const runningPRs = points.map((p, i) => {
+    if (i === 0) return true;
+    const prev = points.slice(0, i);
+    const prevBestW = Math.max(...prev.map(q => q.value));
+    const prevBestR = Math.max(...prev.filter(q => q.value === prevBestW).map(q => q.reps || 0));
+    return p.value > prevBestW || (p.value === prevBestW && (p.reps || 0) > prevBestR);
+  });
 
   const wPolyline = points.map((p, i) => `${toX(i)},${toYw(p.value)}`).join(" ");
   const rPolyline = hasReps ? points.map((p, i) => `${toX(i)},${toYr(p.reps || 0)}`).join(" ") : "";
@@ -601,7 +610,7 @@ function DualLineChart({ points, lineColor = WEIGHT_COLOR, allTimeMax }) {
             const cx = toX(i);
             const cyw = toYw(p.value);
             const cyr = hasReps ? toYr(p.reps || 0) : null;
-            const isPR = p.value === allTimeMax;
+            const isPR = runningPRs[i];
             const isHov = hovered === i;
             return (
               <g key={i}>
@@ -1944,7 +1953,12 @@ export default function App() {
                 const palette = ["#5B9BD5", "#A8C8E8", "#5bb85b", "#d55b5b", "#b55bd5", "#d5a55b", "#5bd5d5", "#d55ba0"];
                 return names.map((name, idx) => {
                   const pts = progressData(name); if (!pts.length) return null;
-                  const allTimeMax = Math.max(...pts.map(p => p.value));
+                  // PR = best (weight, reps) combo: weight is primary, reps breaks ties
+                  const prPoint = pts.reduce((best, p) => {
+                    if (p.value > best.value) return p;
+                    if (p.value === best.value && (p.reps || 0) > (best.reps || 0)) return p;
+                    return best;
+                  }, pts[0]);
                   const gain = pts[pts.length - 1].value - pts[0].value;
                   const lc = palette[idx % palette.length];
                   const best1RM = data.workouts
@@ -1961,10 +1975,16 @@ export default function App() {
                               <div style={{ fontSize: 10, color: t.textMuted, marginTop: 2 }}>EST. 1RM</div>
                             </div>
                           )}
-                          <div style={{ textAlign: "right" }}><div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 22, color: "#ff9500", lineHeight: 1 }}>{allTimeMax} <span style={{ fontSize: 13, color: t.textMuted }}>lbs</span></div><div style={{ fontSize: 10, color: t.textMuted, marginTop: 2 }}>PR 👑</div></div>
+                          <div style={{ textAlign: "right" }}>
+                            <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 22, color: "#ff9500", lineHeight: 1 }}>
+                              {prPoint.value} <span style={{ fontSize: 13, color: t.textMuted }}>lbs</span>
+                              {prPoint.reps > 0 && <span style={{ fontSize: 15 }}> × {prPoint.reps}</span>}
+                            </div>
+                            <div style={{ fontSize: 10, color: t.textMuted, marginTop: 2 }}>PR 👑</div>
+                          </div>
                         </div>
                       </div>
-                      <LineChart points={pts} lineColor={lc} allTimeMax={allTimeMax} />
+                      <LineChart points={pts} lineColor={lc} />
                       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 10, color: t.textMuted }}>
                         <span>← Days →</span>
                         <span style={{ color: gain > 0 ? "#5bb85b" : gain < 0 ? "#d55b5b" : t.textMuted, fontWeight: 600 }}>{gain > 0 ? "▲" : gain < 0 ? "▼" : "—"} {Math.abs(gain)} lbs total</span>
