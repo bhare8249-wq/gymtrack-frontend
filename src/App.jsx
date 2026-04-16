@@ -206,6 +206,7 @@ const Icon = ({ name, size = 18 }) => {
     home:     <><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>,
     book:     <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>,
     shield:   <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></>,
+    gear:     <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{p[name]}</svg>;
 };
@@ -1040,6 +1041,52 @@ function SecuritySettings({ authedUser }) {
   );
 }
 
+// ── Settings Modal ────────────────────────────────────────────────────
+function SettingsModal({ authedUser, onClose, toggleTheme }) {
+  const t = useT();
+  const theme = useContext(ThemeCtx);
+  const accent = "#5B9BD5";
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 900, display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center" }}
+      onClick={onClose}>
+      {/* Backdrop */}
+      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
+      {/* Sheet */}
+      <div onClick={e => e.stopPropagation()} style={{ position: "relative", width: "100%", maxWidth: 420, background: t.surface, borderRadius: "20px 20px 0 0", padding: "0 20px calc(env(safe-area-inset-bottom, 0px) + 24px)", maxHeight: "85vh", overflowY: "auto", boxShadow: "0 -8px 40px rgba(0,0,0,0.4)" }}>
+        {/* Handle */}
+        <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 4px" }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border }} />
+        </div>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 16, borderBottom: `1px solid ${t.border}`, marginBottom: 20 }}>
+          <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 22, letterSpacing: 1 }}>
+            <span style={{ color: accent }}>Settings</span>
+          </div>
+          <button onClick={onClose} style={{ background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 8, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: t.textMuted }}>
+            <Icon name="x" size={16} />
+          </button>
+        </div>
+        {/* Theme toggle */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 11, color: t.textMuted, textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 700, marginBottom: 10 }}>Appearance</div>
+          <button onClick={toggleTheme} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 12, padding: "13px 16px", cursor: "pointer", color: t.text, boxSizing: "border-box" }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 600, fontSize: 14 }}>
+              <Icon name={theme === "dark" ? "moon" : "sun"} size={16} />
+              {theme === "dark" ? "Dark Mode" : "Light Mode"}
+            </span>
+            <span style={{ fontSize: 11, color: t.textMuted, fontWeight: 600 }}>Tap to switch</span>
+          </button>
+        </div>
+        {/* Security */}
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 11, color: t.textMuted, textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 700, marginBottom: 10 }}>Account Security</div>
+          <SecuritySettings authedUser={authedUser} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Admin Panel ───────────────────────────────────────────────────────
 function AdminPanel({ currentUser }) {
   const t = useT(); const S = useS();
@@ -1504,6 +1551,7 @@ export default function App() {
   const [profileDraft, setProfileDraft] = useState({});
   const [helpPage, setHelpPage] = useState(null);
   const [showPlateCalc, setShowPlateCalc] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const t = THEMES[theme]; const S = makeStyles(t);
   const profile = data.profile || {};
@@ -1647,7 +1695,12 @@ export default function App() {
                 <div style={{ color: t.textMuted, fontSize: 12, marginTop: 5 }}>{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</div>
                 {streak > 0 && <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,149,0,0.12)", border: "1px solid rgba(255,149,0,0.3)", borderRadius: 20, padding: "4px 12px", fontSize: 12, color: "#ff9500", fontWeight: 700, marginTop: 8 }}>🔥 {streak} day streak</div>}
               </div>
-              <HelpBtn page="home" onOpen={() => setHelpPage("home")} />
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <button onClick={() => setShowSettings(true)} style={{ background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: t.textMuted }}>
+                  <Icon name="gear" size={16} />
+                </button>
+                <HelpBtn page="home" onOpen={() => setHelpPage("home")} />
+              </div>
             </div>
             {/* Stat cards */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
@@ -1948,9 +2001,6 @@ export default function App() {
                 )}
               </div>
               <div style={{ display: "flex", gap: 7, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
-                <button onClick={toggleTheme} style={{ background: t.surfaceHigh, border: `1px solid ${t.border}`, color: t.textSub, borderRadius: 9, padding: "8px 11px", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, fontWeight: 600 }}>
-                  <Icon name={theme === "dark" ? "sun" : "moon"} size={14} />{theme === "dark" ? "Light" : "Dark"}
-                </button>
                 {!isEditing && <button onClick={startEdit} style={{ background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 9, color: t.textSub, padding: "8px 12px", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 5, fontWeight: 600 }}><Icon name="edit2" size={13} /> Edit</button>}
                 <HelpBtn page="profile" onOpen={() => setHelpPage("profile")} />
               </div>
@@ -2012,9 +2062,6 @@ export default function App() {
                   <button onClick={() => setEditingProfile(false)} style={{ flex: 1, background: "transparent", border: `1px solid ${t.border}`, color: t.textMuted, borderRadius: 10, padding: 13, fontSize: 15, cursor: "pointer", fontWeight: 600 }}>Cancel</button>
                   <button onClick={() => { saveProfile(draft); setEditingProfile(false); }} style={{ flex: 2, background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#ffffff", border: "none", borderRadius: 10, padding: 13, fontSize: 16, cursor: "pointer", fontFamily: "'Bebas Neue', cursive", letterSpacing: 1 }}>Save Profile</button>
                 </div>
-
-                {/* ── Security Settings ── */}
-                <SecuritySettings authedUser={authedUser} />
 
               </div>
             ) : (
@@ -2092,6 +2139,7 @@ export default function App() {
       {/* ── HELP MODAL ───────────────────── */}
       {helpPage && <HelpModal page={helpPage} onClose={() => setHelpPage(null)} />}
       {showPlateCalc && <PlateCalculator onClose={() => setShowPlateCalc(false)} />}
+      {showSettings && <SettingsModal authedUser={authedUser} onClose={() => setShowSettings(false)} toggleTheme={toggleTheme} />}
 
       {/* ── SIGN OUT — fixed above nav on profile tab ── */}
       {view === "profile" && (
