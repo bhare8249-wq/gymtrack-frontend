@@ -497,7 +497,7 @@ function LineChart({ points, lineColor = accent, allTimeMax }) {
 
 // ── Big 3 PRs ─────────────────────────────────────────────────────────
 function Big3PRs({ workouts }) {
-  const t = useT(); const S = useS();
+  const t = useT();
   const cfg = {
     "Bench Press": { emoji: "🏋️", color: "#5b9bd5", borderColor: "#1a3a5a", bgColor: "rgba(58,111,168,0.1)" },
     "Squat":       { emoji: "🦵", color: "#5bb85b", borderColor: "#1a3a1a", bgColor: "rgba(74,122,74,0.1)" },
@@ -561,7 +561,7 @@ function SetRow({ set, index, onChange, onRemove }) {
 
 // ── Exercise Block ────────────────────────────────────────────────────
 function ExerciseBlock({ exercise, onChange, onRemove }) {
-  const t = useT(); const S = useS();
+  const S = useS();
   const addSet = () => {
     const last = exercise.sets[exercise.sets.length - 1];
     if (last && (last.weight || last.reps)) window.dispatchEvent(new Event("gt-start-timer"));
@@ -585,7 +585,7 @@ function ExerciseBlock({ exercise, onChange, onRemove }) {
 
 // ── History Card ──────────────────────────────────────────────────────
 function WorkoutHistoryCard({ workout, index, onLabelChange, onDelete }) {
-  const t = useT(); const S = useS();
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const activeLabels = workout.labels ? workout.labels : workout.label ? [workout.label] : [];
@@ -669,7 +669,7 @@ function WorkoutHistoryCard({ workout, index, onLabelChange, onDelete }) {
 
 // ── Security Settings Component ───────────────────────────────────────
 function SecuritySettings({ authedUser }) {
-  const t = useT(); const S = useS();
+  const t = useT();
   const [showSecurity, setShowSecurity] = useState(false);
   const [secTab, setSecTab] = useState("email");
   const [newEmail, setNewEmail] = useState("");
