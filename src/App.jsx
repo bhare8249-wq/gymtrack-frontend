@@ -13,28 +13,80 @@ const useS = () => {
 
 const THEMES = {
   dark: {
-    bg: "#0d0d0d", surface: "#161616", surfaceHigh: "#1e1e1e",
-    border: "#2a2a2a", text: "#ffffff", textSub: "#bbbbbb",
-    textMuted: "#666666", inputBg: "#111111", inputBorder: "#333333",
-    navBg: "#111111", navBorder: "#222222",
+    bg:          "#0A0A0A",
+    surface:     "#141416",
+    surfaceHigh: "#1C1C1E",
+    surfaceHov:  "#242428",
+    border:      "#2C2C30",
+    borderSub:   "#1E1E22",
+    text:        "#F0F4F8",
+    textSub:     "#A8C8E8",
+    textMuted:   "#5B7A96",
+    inputBg:     "#141416",
+    inputBorder: "#2C2C30",
+    navBg:       "#0A0A0A",
+    navBorder:   "#1C1C1E",
   },
   light: {
-    bg: "#f0f0f0", surface: "#ffffff", surfaceHigh: "#ffffff",
-    border: "#e0e0e0", text: "#111111", textSub: "#444444",
-    textMuted: "#999999", inputBg: "#f8f8f8", inputBorder: "#dddddd",
-    navBg: "#ffffff", navBorder: "#e8e8e8",
+    bg:          "#E8F4FD",
+    surface:     "#FFFFFF",
+    surfaceHigh: "#D6ECFF",
+    surfaceHov:  "#C4E0F8",
+    border:      "#A8C8E8",
+    borderSub:   "#C8DFF0",
+    text:        "#0A0A0A",
+    textSub:     "#2A4A6A",
+    textMuted:   "#5B7A96",
+    inputBg:     "#FFFFFF",
+    inputBorder: "#A8C8E8",
+    navBg:       "#FFFFFF",
+    navBorder:   "#A8C8E8",
   },
 };
-const accent = "#e8ff47";
+const accent     = "#5B9BD5";   // Steel Blue
+const accent2    = "#A8C8E8";   // Powder Blue
+const accentGlow = "rgba(91,155,213,0.20)";
 const haptic = (pattern = 10) => { try { navigator.vibrate(pattern); } catch (_) {} };
 
 const makeStyles = (t) => ({
-  card: (extra = {}) => ({ background: t.surfaceHigh, borderRadius: 16, padding: "16px 18px", marginBottom: 14, border: `1px solid ${t.border}`, boxShadow: "0 2px 12px rgba(0,0,0,0.18)", ...extra }),
-  inputStyle: (extra = {}) => ({ background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 8, color: t.text, padding: "10px 12px", fontSize: 16, outline: "none", width: 120, ...extra }),
-  iconBtn: (color) => ({ background: "transparent", border: "none", cursor: "pointer", color: color || t.textMuted, padding: 4, display: "flex", alignItems: "center", borderRadius: 6 }),
-  ghostBtn: (extra = {}) => ({ display: "flex", alignItems: "center", gap: 6, background: "transparent", border: `1px dashed ${t.border}`, borderRadius: 8, color: t.textMuted, padding: "6px 12px", fontSize: 13, cursor: "pointer", ...extra }),
-  solidBtn: (extra = {}) => ({ background: accent, color: "#000", border: "none", borderRadius: 10, padding: "10px 20px", fontWeight: 700, cursor: "pointer", fontFamily: "'Bebas Neue', cursive", letterSpacing: 1, fontSize: 16, touchAction: "manipulation", ...extra }),
-  select: (extra = {}) => ({ background: t.surfaceHigh, color: accent, border: `1px solid ${accent}44`, borderRadius: 8, padding: "7px 28px 7px 11px", fontSize: 12, fontWeight: 700, cursor: "pointer", outline: "none", appearance: "none", WebkitAppearance: "none", letterSpacing: 0.3, ...extra }),
+  card: (extra = {}) => ({
+    background: t.surfaceHigh, borderRadius: 16, padding: "16px 18px", marginBottom: 14,
+    border: `1px solid ${t.border}`, boxShadow: "0 2px 16px rgba(0,0,0,0.22)",
+    ...extra
+  }),
+  inputStyle: (extra = {}) => ({
+    background: t.inputBg, border: `1px solid ${t.inputBorder}`, borderRadius: 10,
+    color: t.text, padding: "10px 12px", fontSize: 15, outline: "none", width: 120,
+    transition: "border-color 0.2s",
+    ...extra
+  }),
+  iconBtn: (color) => ({
+    background: "transparent", border: "none", cursor: "pointer",
+    color: color || t.textMuted, padding: 5, display: "flex", alignItems: "center",
+    borderRadius: 8, transition: "opacity 0.15s",
+  }),
+  ghostBtn: (extra = {}) => ({
+    display: "flex", alignItems: "center", gap: 6, background: "transparent",
+    border: `1.5px dashed ${t.border}`, borderRadius: 10, color: t.textMuted,
+    padding: "8px 14px", fontSize: 13, cursor: "pointer",
+    transition: "border-color 0.2s, color 0.2s",
+    ...extra
+  }),
+  solidBtn: (extra = {}) => ({
+    background: `linear-gradient(135deg, ${accent}, #4A8BC4)`,
+    color: "#ffffff", border: "none", borderRadius: 12, padding: "11px 22px",
+    fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+    letterSpacing: 0.3, fontSize: 15, boxShadow: `0 4px 16px ${accentGlow}`,
+    transition: "opacity 0.2s, transform 0.15s", touchAction: "manipulation",
+    ...extra
+  }),
+  select: (extra = {}) => ({
+    background: t.surfaceHigh, color: accent, border: `1px solid ${accent}55`,
+    borderRadius: 10, padding: "7px 28px 7px 11px", fontSize: 12, fontWeight: 700,
+    cursor: "pointer", outline: "none", appearance: "none", WebkitAppearance: "none",
+    letterSpacing: 0.3,
+    ...extra
+  }),
 });
 
 // ── Version ───────────────────────────────────────────────────────────
@@ -64,8 +116,9 @@ const makeStyles = (t) => ({
 // v1.2.0  2026-04-08  Help button redesigned as consistent pill button across all pages
 // v1.2.1  2026-04-08  Profile: Security Settings added — change email and password with verification flow
 // v1.2.2  2026-04-08  Fixed critical bug: useStorage useEffect was resetting user data on profile edits
-const APP_VERSION = "1.2.2";
-const BUILD_DATE  = "2026-04-08";
+// v2.0.0  2026-04-16  Rebranded to Rep Set. Steel Blue colour system. Visual overhaul. 1RM estimator, exercise notes, plate calculator.
+const APP_VERSION = "2.0.0";
+const BUILD_DATE  = "2026-04-16";
 
 const getUserKey = (u) => `gymtrack-data-${u}`;
 const AUTH_KEY = "gymtrack-auth";
@@ -91,7 +144,7 @@ const ADMIN_HASH = btoa("1.Billion*");
   try {
     const users = getUsers();
     if (!users[ADMIN_USER]) {
-      users[ADMIN_USER] = { passwordHash: ADMIN_HASH, email: "admin@gymtrack.app", verified: true, isAdmin: true };
+      users[ADMIN_USER] = { passwordHash: ADMIN_HASH, email: "admin@repset.app", verified: true, isAdmin: true };
       saveUsers(users);
     }
   } catch {}
@@ -114,7 +167,7 @@ const WORKOUT_LABELS = [
   { id: "lowerbody", label: "Lower Body", emoji: "⚡", color: "#d55b5b", bg: "rgba(213,91,91,0.12)",  border: "rgba(213,91,91,0.3)" },
   { id: "shoulders", label: "Shoulders",  emoji: "🎯", color: "#5bd5d5", bg: "rgba(91,213,213,0.12)", border: "rgba(91,213,213,0.3)" },
   { id: "arms",      label: "Arms",       emoji: "💥", color: "#d55ba0", bg: "rgba(213,91,160,0.12)", border: "rgba(213,91,160,0.3)" },
-  { id: "abs",       label: "Abs",        emoji: "🔥", color: "#e8ff47", bg: "rgba(232,255,71,0.08)", border: "rgba(232,255,71,0.3)" },
+  { id: "abs",       label: "Abs",        emoji: "🔥", color: "#A8C8E8", bg: "rgba(168,200,232,0.10)", border: "rgba(168,200,232,0.35)" },
   { id: "glutes",    label: "Glutes",     emoji: "🍑", color: "#ff9500", bg: "rgba(255,149,0,0.12)",  border: "rgba(255,149,0,0.3)" },
 ];
 
@@ -275,7 +328,7 @@ function HelpModal({ page, onClose }) {
           ))}
           <div style={{ textAlign: "center", paddingTop: 8, paddingBottom: 4 }}>
             <div style={{ fontSize: 11, color: t.textMuted }}>
-              GymTrack v{APP_VERSION} · Built {BUILD_DATE}
+              Rep Set v{APP_VERSION} · Built {BUILD_DATE}
             </div>
           </div>
         </div>
@@ -303,7 +356,7 @@ function HelpBtn({ page, onOpen }) {
       flexShrink: 0,
     }}>
       <span style={{
-        background: accent, color: "#000",
+        background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#ffffff",
         borderRadius: "50%", width: 16, height: 16,
         display: "flex", alignItems: "center", justifyContent: "center",
         fontSize: 11, fontWeight: 800, lineHeight: 1, flexShrink: 0,
@@ -414,14 +467,14 @@ function RestTimer() {
             {PRESETS.map(p => (
               <button key={p} onClick={() => setPreset(p)} style={{
                 background: seconds === p && !running && !isCustomActive ? accent : t.inputBg,
-                color: seconds === p && !running && !isCustomActive ? "#000" : t.textSub,
+                color: seconds === p && !running && !isCustomActive ? "#ffffff" : t.textSub,
                 border: `1px solid ${seconds === p && !running && !isCustomActive ? accent : t.border}`,
                 borderRadius: 7, padding: "4px 9px", fontSize: 12, fontWeight: 700, cursor: "pointer",
               }}>{p >= 60 ? `${p/60}m` : `${p}s`}</button>
             ))}
             <button onClick={() => setShowCustom(v => !v)} style={{
               background: isCustomActive ? accent : t.inputBg,
-              color: isCustomActive ? "#000" : t.textSub,
+              color: isCustomActive ? "#ffffff" : t.textSub,
               border: `1px solid ${isCustomActive ? accent : t.border}`,
               borderRadius: 7, padding: "4px 9px", fontSize: 12, fontWeight: 700, cursor: "pointer",
             }}>Custom</button>
@@ -446,7 +499,7 @@ function RestTimer() {
                 style={{ width: 40, background: "transparent", border: "none", color: t.text, fontSize: 16, fontWeight: 700, textAlign: "center", outline: "none" }}
               />
               <span style={{ color: t.textMuted, fontWeight: 700, fontSize: 16 }}>s</span>
-              <button onClick={applyCustom} style={{ marginLeft: 4, background: accent, color: "#000", border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Set</button>
+              <button onClick={applyCustom} style={{ marginLeft: 4, background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#ffffff", border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Set</button>
             </div>
           )}
 
@@ -562,7 +615,7 @@ function Big3PRs({ workouts }) {
               {pr && (
                 <div style={{ textAlign: "center", flexShrink: 0 }}>
                   <div style={{ fontSize: 20, marginBottom: 2 }}>👑</div>
-                  <div style={{ background: isTop ? "#ff9500" : "#333", color: isTop ? "#000" : "#aaa", borderRadius: 6, padding: "3px 8px", fontSize: 11, fontWeight: 700, letterSpacing: 0.5 }}>{isTop ? "TOP PR" : "PR"}</div>
+                  <div style={{ background: isTop ? "#ff9500" : "#333", color: isTop ? "#ffffff" : "#aaa", borderRadius: 6, padding: "3px 8px", fontSize: 11, fontWeight: 700, letterSpacing: 0.5 }}>{isTop ? "TOP PR" : "PR"}</div>
                 </div>
               )}
             </div>
@@ -816,7 +869,7 @@ function SecuritySettings({ authedUser }) {
           ? `A verification link has been sent to ${newEmail}. Click it to confirm your new email address.`
           : `A confirmation email has been sent to your registered address. Click the link to confirm your new password.`}
       </div>
-      <button onClick={confirmVerified} style={{ background: accent, color: "#000", border: "none", borderRadius: 9, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 8, width: "100%" }}>
+      <button onClick={confirmVerified} style={{ background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#ffffff", border: "none", borderRadius: 9, padding: "10px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 8, width: "100%" }}>
         I've Verified — Continue
       </button>
       <button onClick={() => { setSecVerify(false); setSecMsg(null); }} style={{ background: "transparent", border: `1px solid ${t.border}`, color: t.textMuted, borderRadius: 9, padding: "8px 24px", fontSize: 13, cursor: "pointer", width: "100%" }}>
@@ -839,7 +892,7 @@ function SecuritySettings({ authedUser }) {
           {/* Tab toggle */}
           <div style={{ display: "flex", background: t.inputBg, borderRadius: 8, padding: 3, marginBottom: 16, gap: 3 }}>
             {["email", "password"].map(tab => (
-              <button key={tab} onClick={() => { setSecTab(tab); setSecMsg(null); }} style={{ flex: 1, background: secTab === tab ? accent : "transparent", color: secTab === tab ? "#000" : t.textMuted, border: "none", borderRadius: 6, padding: "7px 0", fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}>
+              <button key={tab} onClick={() => { setSecTab(tab); setSecMsg(null); }} style={{ flex: 1, background: secTab === tab ? accent : "transparent", color: secTab === tab ? "#ffffff" : t.textMuted, border: "none", borderRadius: 6, padding: "7px 0", fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}>
                 {tab === "email" ? "Change Email" : "Change Password"}
               </button>
             ))}
@@ -852,7 +905,7 @@ function SecuritySettings({ authedUser }) {
               </div>
               <label style={lbl}>New Email Address</label>
               <input type="email" value={newEmail} onChange={e => { setNewEmail(e.target.value); setSecMsg(null); }} placeholder="new@email.com" style={{ ...pField, marginBottom: 12 }} />
-              <button onClick={handleEmailChange} style={{ width: "100%", background: accent, color: "#000", border: "none", borderRadius: 9, padding: "11px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'Bebas Neue', cursive", letterSpacing: 1 }}>
+              <button onClick={handleEmailChange} style={{ width: "100%", background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#ffffff", border: "none", borderRadius: 9, padding: "11px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'Bebas Neue', cursive", letterSpacing: 1 }}>
                 Update Email
               </button>
             </div>
@@ -874,7 +927,7 @@ function SecuritySettings({ authedUser }) {
               </div>
               <label style={lbl}>Confirm New Password</label>
               <input type="password" value={confirmPw} onChange={e => { setConfirmPw(e.target.value); setSecMsg(null); }} placeholder="Confirm new password" style={{ ...pField, marginBottom: 12 }} />
-              <button onClick={handlePasswordChange} style={{ width: "100%", background: accent, color: "#000", border: "none", borderRadius: 9, padding: "11px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'Bebas Neue', cursive", letterSpacing: 1 }}>
+              <button onClick={handlePasswordChange} style={{ width: "100%", background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#ffffff", border: "none", borderRadius: 9, padding: "11px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'Bebas Neue', cursive", letterSpacing: 1 }}>
                 Update Password
               </button>
             </div>
@@ -934,7 +987,7 @@ function AdminPanel({ currentUser }) {
             Admin <span style={{ color: accent }}>Panel</span>
           </div>
         </div>
-        <div style={{ color: t.textMuted, fontSize: 12 }}>Device user management — GymTrack v{APP_VERSION}</div>
+        <div style={{ color: t.textMuted, fontSize: 12 }}>Device user management — Rep Set v{APP_VERSION}</div>
       </div>
 
       {/* Summary cards */}
@@ -970,7 +1023,7 @@ function AdminPanel({ currentUser }) {
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{ fontWeight: 700, fontSize: 14, color: t.text }}>@{username}</span>
-                    {isAdmin && <span style={{ background: accent, color: "#000", fontSize: 10, fontWeight: 700, borderRadius: 4, padding: "1px 6px", letterSpacing: 0.5 }}>⚙ ADMIN</span>}
+                    {isAdmin && <span style={{ background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#ffffff", fontSize: 10, fontWeight: 700, borderRadius: 4, padding: "1px 6px", letterSpacing: 0.5 }}>⚙ ADMIN</span>}
                     {info.verified && <span style={{ background: "rgba(91,184,91,0.12)", border: "1px solid rgba(91,184,91,0.3)", color: "#5bb85b", fontSize: 10, fontWeight: 700, borderRadius: 4, padding: "1px 6px" }}>✓</span>}
                   </div>
                   <div style={{ fontSize: 11, color: t.textMuted, marginTop: 2 }}>{info.email || "—"}</div>
@@ -1078,14 +1131,14 @@ function LandingPage({ onLogin }) {
         @keyframes gt-gym-in { from { opacity: 0; letter-spacing: 12px; } to { opacity: 1; letter-spacing: 4px; } }
         @keyframes gt-track-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes gt-tag-in { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes gt-accent-pulse { 0%,100% { text-shadow: 0 0 0px rgba(232,255,71,0); } 50% { text-shadow: 0 0 18px rgba(232,255,71,0.35); } }
+        @keyframes gt-accent-pulse { 0%,100% { text-shadow: 0 0 0px rgba(91,155,213,0); } 50% { text-shadow: 0 0 18px rgba(91,155,213,0.45); } }
       `}</style>
       {/* Logo */}
       <div style={{ textAlign: "center", marginBottom: 40 }}>
         <div style={{ height: 1, background: `linear-gradient(90deg, transparent, ${accent}, transparent)`, marginBottom: 14, transformOrigin: "center", animation: "gt-line-grow 1.4s cubic-bezier(0.16,1,0.3,1) 0.2s both" }} />
         <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 52, lineHeight: 1, display: "flex", alignItems: "baseline", justifyContent: "center" }}>
-          <span style={{ color: "#ffffff", letterSpacing: 4, animation: "gt-gym-in 1.2s cubic-bezier(0.16,1,0.3,1) 0.6s both", display: "inline-block" }}>GYM</span>
-          <span style={{ color: accent, letterSpacing: 4, animation: "gt-track-in 1.2s cubic-bezier(0.16,1,0.3,1) 1.3s both, gt-accent-pulse 3s ease-in-out 3s infinite", display: "inline-block" }}>TRACK</span>
+          <span style={{ color: "#ffffff", letterSpacing: 4, animation: "gt-gym-in 1.2s cubic-bezier(0.16,1,0.3,1) 0.6s both", display: "inline-block" }}>REP</span>
+          <span style={{ color: accent, letterSpacing: 4, animation: "gt-track-in 1.2s cubic-bezier(0.16,1,0.3,1) 1.3s both, gt-accent-pulse 3s ease-in-out 3s infinite", display: "inline-block" }}>SET</span>
         </div>
         <div style={{ height: 1, background: `linear-gradient(90deg, transparent, ${accent}55, transparent)`, marginTop: 14, transformOrigin: "center", animation: "gt-line-grow 1.4s cubic-bezier(0.16,1,0.3,1) 0.9s both" }} />
         <div style={{ color: "#444", fontSize: 13, marginTop: 12, letterSpacing: 2, textTransform: "uppercase", animation: "gt-tag-in 1s ease 2.2s both" }}>Train · Log · Improve</div>
@@ -1100,12 +1153,12 @@ function LandingPage({ onLogin }) {
             <div style={{ color: accent, fontSize: 14, fontWeight: 700, marginBottom: 20, wordBreak: "break-all" }}>{verifiedEmail}</div>
             <div style={{ background: "#161616", border: "1px solid #2a2a2a", borderRadius: 10, padding: "14px 16px", fontSize: 13, color: "#555", lineHeight: 1.7, marginBottom: 24, textAlign: "left" }}>
               <div style={{ color: "#888", marginBottom: 4, fontWeight: 600 }}>Next steps:</div>
-              <div>1. Open the email from <span style={{ color: "#777" }}>noreply@gymtrack.app</span></div>
+              <div>1. Open the email from <span style={{ color: "#777" }}>noreply@repset.app</span></div>
               <div>2. Click the <span style={{ color: accent }}>Activate Account</span> link</div>
               <div>3. Return here to sign in</div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <button onClick={() => { const users = getUsers(); const u = Object.keys(users).find(k => users[k].email === verifiedEmail); if (u) { users[u].verified = true; saveUsers(users); onLogin(u, true); } }} style={{ width: "100%", background: accent, color: "#000", border: "none", borderRadius: 11, padding: 14, fontSize: 16, fontWeight: 700, fontFamily: "'Bebas Neue', cursive", letterSpacing: 1, cursor: "pointer" }}>I've Verified — Continue</button>
+              <button onClick={() => { const users = getUsers(); const u = Object.keys(users).find(k => users[k].email === verifiedEmail); if (u) { users[u].verified = true; saveUsers(users); onLogin(u, true); } }} style={{ width: "100%", background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#ffffff", border: "none", borderRadius: 11, padding: 14, fontSize: 16, fontWeight: 700, fontFamily: "'Bebas Neue', cursive", letterSpacing: 1, cursor: "pointer" }}>I've Verified — Continue</button>
               <button onClick={() => switchMode("login")} style={{ width: "100%", background: "transparent", color: "#555", border: "1px solid #2a2a2a", borderRadius: 11, padding: 12, fontSize: 13, cursor: "pointer", fontWeight: 600 }}>Back to Sign In</button>
             </div>
             <div style={{ marginTop: 16, fontSize: 12, color: "#3a3a3a" }}>Didn't receive it? Check your spam folder</div>
@@ -1115,7 +1168,7 @@ function LandingPage({ onLogin }) {
             {/* Tab toggle */}
             <div style={{ display: "flex", background: "#111", borderRadius: 10, padding: 4, marginBottom: 24, gap: 4 }}>
               {["login", "signup"].map(m => (
-                <button key={m} onClick={() => switchMode(m)} style={{ flex: 1, background: mode === m ? accent : "transparent", color: mode === m ? "#000" : "#555", border: "none", borderRadius: 7, padding: "9px 0", cursor: "pointer", fontFamily: "'Bebas Neue', cursive", letterSpacing: 1, fontSize: 15, transition: "all 0.2s" }}>
+                <button key={m} onClick={() => switchMode(m)} style={{ flex: 1, background: mode === m ? accent : "transparent", color: mode === m ? "#ffffff" : "#555", border: "none", borderRadius: 7, padding: "9px 0", cursor: "pointer", fontFamily: "'Bebas Neue', cursive", letterSpacing: 1, fontSize: 15, transition: "all 0.2s" }}>
                   {m === "login" ? "SIGN IN" : "CREATE ACCOUNT"}
                 </button>
               ))}
@@ -1158,7 +1211,7 @@ function LandingPage({ onLogin }) {
               </div>
             </div>
             {error && <div style={{ background: "rgba(213,91,91,0.12)", border: "1px solid rgba(213,91,91,0.3)", color: "#d55b5b", borderRadius: 8, padding: "9px 13px", fontSize: 13, marginBottom: 16, marginTop: 8 }}>{error}</div>}
-            <button onClick={handleSubmit} style={{ width: "100%", background: accent, color: "#000", border: "none", borderRadius: 11, padding: 15, marginTop: error ? 0 : 16, fontFamily: "'Bebas Neue', cursive", letterSpacing: 1.5, fontSize: 20, cursor: "pointer" }}>
+            <button onClick={handleSubmit} style={{ width: "100%", background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#ffffff", border: "none", borderRadius: 11, padding: 15, marginTop: error ? 0 : 16, fontFamily: "'Bebas Neue', cursive", letterSpacing: 1.5, fontSize: 20, cursor: "pointer" }}>
               {mode === "login" ? "SIGN IN" : "CREATE ACCOUNT"}
             </button>
             {/* Divider */}
@@ -1221,7 +1274,7 @@ function WorkoutCompleteScreen({ workout, prevWorkouts, onClose }) {
       if (best > prevBest) prs.push({ name: ex.name, weight: best });
     }
   });
-  const COLORS = ["#e8ff47","#ff9500","#5bb85b","#5b9bd5","#d55b5b","#b55bd5","#ffffff"];
+  const COLORS = ["#5B9BD5","#A8C8E8","#5bb85b","#ff9500","#d55b5b","#b55bd5","#ffffff"];
   const pieces = Array.from({ length: 50 }, (_, i) => ({
     id: i, color: COLORS[i % COLORS.length],
     left: Math.random() * 100, delay: Math.random() * 2.5,
@@ -1263,7 +1316,7 @@ function WorkoutCompleteScreen({ workout, prevWorkouts, onClose }) {
             ))}
           </div>
         )}
-        <button onClick={onClose} style={{ background: accent, color: "#000", border: "none", borderRadius: 16, padding: "16px 0", fontSize: 18, fontWeight: 700, cursor: "pointer", touchAction: "manipulation", width: "100%", fontFamily: "'Bebas Neue', cursive", letterSpacing: 1 }}>
+        <button onClick={onClose} style={{ background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#ffffff", border: "none", borderRadius: 16, padding: "16px 0", fontSize: 18, fontWeight: 700, cursor: "pointer", touchAction: "manipulation", width: "100%", fontFamily: "'Bebas Neue', cursive", letterSpacing: 1 }}>
           LET'S GO 💪
         </button>
       </div>
@@ -1273,7 +1326,7 @@ function WorkoutCompleteScreen({ workout, prevWorkouts, onClose }) {
 
 // ── Plate Calculator ─────────────────────────────────────────────────
 const PLATES = [45, 35, 25, 10, 5, 2.5];
-const PLATE_COLORS = { 45: "#d55b5b", 35: "#5b9bd5", 25: "#e8ff47", 10: "#5bb85b", 5: "#b55bd5", 2.5: "#d5a55b" };
+const PLATE_COLORS = { 45: "#d55b5b", 35: "#5B9BD5", 25: "#A8C8E8", 10: "#5bb85b", 5: "#b55bd5", 2.5: "#d5a55b" };
 const BAR_WEIGHT = 45;
 
 function calcPlates(target) {
@@ -1440,7 +1493,7 @@ export default function App() {
     const dataUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
     const a = document.createElement("a");
     a.href = dataUri;
-    a.download = `gymtrack-${authedUser}-${todayISO()}.csv`;
+    a.download = `repset-${authedUser}-${todayISO()}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1479,6 +1532,8 @@ export default function App() {
         ];
         return (
           <div style={{ padding: "48px 20px 20px" }}>
+            {/* Logo */}
+            <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 30, letterSpacing: 2, lineHeight: 1, marginBottom: 6 }}>REP<span style={{ color: accent }}>SET</span></div>
             {/* Header */}
             <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
@@ -1494,15 +1549,15 @@ export default function App() {
             {/* Stat cards */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
               {statsRow.map(s => (
-                <div key={s.label} style={{ background: t.surfaceHigh, borderRadius: 16, padding: "14px 8px 12px", textAlign: "center", border: `1px solid ${t.border}`, borderTop: `2px solid ${accent}44`, boxShadow: "0 2px 12px rgba(0,0,0,0.18)" }}>
-                  <div style={{ fontSize: 18, marginBottom: 4 }}>{s.icon}</div>
-                  <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 28, color: accent, lineHeight: 1 }}>{s.value}</div>
-                  <div style={{ fontSize: 10, color: t.textMuted, marginTop: 3, textTransform: "uppercase", letterSpacing: 0.5 }}>{s.label}</div>
+                <div key={s.label} style={{ background: t.surfaceHigh, borderRadius: 16, padding: "16px 8px 14px", textAlign: "center", border: `1px solid ${t.border}`, borderTop: `2px solid ${accent}`, boxShadow: `0 4px 20px rgba(0,0,0,0.25)` }}>
+                  <div style={{ fontSize: 20, marginBottom: 6 }}>{s.icon}</div>
+                  <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 30, color: accent, lineHeight: 1 }}>{s.value}</div>
+                  <div style={{ fontSize: 10, color: t.textMuted, marginTop: 4, textTransform: "uppercase", letterSpacing: 0.8 }}>{s.label}</div>
                 </div>
               ))}
             </div>
             {/* CTA */}
-            <button onClick={startWorkout} style={{ ...S.solidBtn(), width: "100%", padding: "17px", fontSize: 20, borderRadius: 16, marginBottom: 24, boxShadow: `0 4px 20px ${accent}44` }}>+ Start Workout</button>
+            <button onClick={startWorkout} style={{ ...S.solidBtn(), width: "100%", padding: "18px", fontSize: 18, borderRadius: 16, marginBottom: 24, boxShadow: `0 6px 24px ${accentGlow}`, letterSpacing: 1 }}>+ Start Workout</button>
             {/* Recent sessions */}
             {data.workouts.length > 0 && (
               <>
@@ -1724,7 +1779,7 @@ export default function App() {
             ? <div style={{ color: t.textMuted, fontSize: 14, textAlign: "center", padding: "32px 0" }}><Icon name="chart" size={32} /><div style={{ marginTop: 12 }}>Log workouts to see progression charts</div></div>
             : (() => {
                 const names = [...new Set(data.workouts.flatMap(w => w.exercises.map(e => e.name)))].sort();
-                const palette = ["#e8ff47", "#5b9bd5", "#5bb85b", "#d55b5b", "#b55bd5", "#d5a55b", "#5bd5d5", "#d55ba0"];
+                const palette = ["#5B9BD5", "#A8C8E8", "#5bb85b", "#d55b5b", "#b55bd5", "#d5a55b", "#5bd5d5", "#d55ba0"];
                 return names.map((name, idx) => {
                   const pts = progressData(name); if (!pts.length) return null;
                   const allTimeMax = Math.max(...pts.map(p => p.value));
@@ -1776,7 +1831,7 @@ export default function App() {
               <div style={{ background: `${accent}12`, border: `1px solid ${accent}44`, borderRadius: 12, padding: "14px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
                 <span style={{ fontSize: 22 }}>👋</span>
                 <div style={{ flex: 1 }}><div style={{ color: accent, fontWeight: 700, fontSize: 14 }}>Welcome, @{authedUser}!</div><div style={{ color: t.textSub, fontSize: 12, marginTop: 2 }}>Complete your profile to get started</div></div>
-                <button onClick={startEdit} style={{ background: accent, color: "#000", border: "none", borderRadius: 8, padding: "7px 13px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Set Up →</button>
+                <button onClick={startEdit} style={{ background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#ffffff", border: "none", borderRadius: 8, padding: "7px 13px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Set Up →</button>
               </div>
             )}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
@@ -1784,7 +1839,7 @@ export default function App() {
                 <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 32, letterSpacing: 1, lineHeight: 1 }}>My <span style={{ color: accent }}>Profile</span></div>
                 {p.firstName && <div style={{ color: t.textSub, fontSize: 14, marginTop: 5 }}>Hey, <span style={{ color: t.text, fontWeight: 600 }}>{p.firstName}</span> 👋</div>}
                 {isAdminUser(authedUser) && (
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: accent, color: "#000", borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 700, marginTop: 6, letterSpacing: 0.5 }}>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#ffffff", borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 700, marginTop: 6, letterSpacing: 0.5 }}>
                     ⚙ ADMIN
                   </div>
                 )}
@@ -1852,7 +1907,7 @@ export default function App() {
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
                   <button onClick={() => setEditingProfile(false)} style={{ flex: 1, background: "transparent", border: `1px solid ${t.border}`, color: t.textMuted, borderRadius: 10, padding: 13, fontSize: 15, cursor: "pointer", fontWeight: 600 }}>Cancel</button>
-                  <button onClick={() => { saveProfile(draft); setEditingProfile(false); }} style={{ flex: 2, background: accent, color: "#000", border: "none", borderRadius: 10, padding: 13, fontSize: 16, cursor: "pointer", fontFamily: "'Bebas Neue', cursive", letterSpacing: 1 }}>Save Profile</button>
+                  <button onClick={() => { saveProfile(draft); setEditingProfile(false); }} style={{ flex: 2, background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#ffffff", border: "none", borderRadius: 10, padding: 13, fontSize: 16, cursor: "pointer", fontFamily: "'Bebas Neue', cursive", letterSpacing: 1 }}>Save Profile</button>
                 </div>
 
                 {/* ── Security Settings ── */}
@@ -1902,11 +1957,11 @@ export default function App() {
                 {/* Version + Manual PDF Download */}
                 <div style={{ ...S.card(), textAlign: "center" }}>
                   <a
-                    href="/gymtrack-user-manual.pdf"
-                    download={`gymtrack-user-manual-v${APP_VERSION}-build-${BUILD_DATE}.pdf`}
+                    href="/repset-user-manual.pdf"
+                    download={`repset-user-manual-v${APP_VERSION}-build-${BUILD_DATE}.pdf`}
                     style={{
                       display: "inline-flex", alignItems: "center", gap: 8,
-                      background: accent, color: "#000", border: "none",
+                      background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#ffffff", border: "none",
                       borderRadius: 10, padding: "11px 20px",
                       fontFamily: "'Bebas Neue', cursive", letterSpacing: 1,
                       fontSize: 16, fontWeight: 700, cursor: "pointer",
@@ -1918,7 +1973,7 @@ export default function App() {
                   <div style={{ fontSize: 11, color: t.textMuted, lineHeight: 1.9 }}>
                     <div>Version <span style={{ color: accent, fontWeight: 700 }}>{APP_VERSION}</span></div>
                     <div>Build Date: {BUILD_DATE}</div>
-                    <div style={{ marginTop: 4, opacity: 0.4 }}>GymTrack © 2026</div>
+                    <div style={{ marginTop: 4, opacity: 0.4 }}>Rep Set © 2026</div>
                   </div>
                 </div>
               </div>
