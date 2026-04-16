@@ -330,6 +330,12 @@ function RestTimer() {
     return () => clearInterval(id);
   }, [running, remaining]);
 
+  useEffect(() => {
+    const handler = () => { setRemaining(seconds); setRunning(true); setDone(false); };
+    window.addEventListener("gt-start-timer", handler);
+    return () => window.removeEventListener("gt-start-timer", handler);
+  }, [seconds]);
+
   const applyCustom = () => {
     const m = parseInt(customMin) || 0;
     const s = parseInt(customSec) || 0;
@@ -556,7 +562,11 @@ function SetRow({ set, index, onChange, onRemove }) {
 // ── Exercise Block ────────────────────────────────────────────────────
 function ExerciseBlock({ exercise, onChange, onRemove }) {
   const t = useT(); const S = useS();
-  const addSet = () => onChange({ ...exercise, sets: [...exercise.sets, { weight: "", reps: "" }] });
+  const addSet = () => {
+    const last = exercise.sets[exercise.sets.length - 1];
+    if (last && (last.weight || last.reps)) window.dispatchEvent(new Event("gt-start-timer"));
+    onChange({ ...exercise, sets: [...exercise.sets, { weight: "", reps: "" }] });
+  };
   const updateSet = (i, s) => { const sets = [...exercise.sets]; sets[i] = s; onChange({ ...exercise, sets }); };
   const removeSet = (i) => onChange({ ...exercise, sets: exercise.sets.filter((_, j) => j !== i) });
   return (
@@ -1092,6 +1102,90 @@ function LandingPage({ onLogin }) {
   );
 }
 
+// ── Streak Calculator ─────────────────────────────────────────────────
+const calcStreak = (workouts) => {
+  if (!workouts.length) return 0;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const uniqueDates = [...new Set(workouts.map(w => w.date))].sort().reverse();
+  let streak = 0, expected = new Date(today);
+  for (const dateStr of uniqueDates) {
+    const d = new Date(dateStr); d.setHours(0, 0, 0, 0);
+    const diff = Math.round((expected - d) / 86400000);
+    if (diff === 0 || diff === 1) { streak++; expected = new Date(d); }
+    else break;
+  }
+  return streak;
+};
+
+// ── Workout Complete Screen ───────────────────────────────────────────
+function WorkoutCompleteScreen({ workout, prevWorkouts, onClose }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const t1 = setTimeout(() => setVisible(true), 30);
+    const t2 = setTimeout(onClose, 8000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [onClose]);
+
+  const totalSets = workout.exercises.reduce((n, ex) => n + ex.sets.length, 0);
+  const totalReps = workout.exercises.reduce((n, ex) => n + ex.sets.reduce((s, set) => s + (parseInt(set.reps) || 0), 0), 0);
+  const prs = [];
+  workout.exercises.forEach(ex => {
+    const best = Math.max(0, ...ex.sets.map(s => parseFloat(s.weight) || 0));
+    if (best > 0) {
+      const prevBest = Math.max(0, ...prevWorkouts.flatMap(w => w.exercises.filter(e => e.name === ex.name).flatMap(e => e.sets.map(s => parseFloat(s.weight) || 0))));
+      if (best > prevBest) prs.push({ name: ex.name, weight: best });
+    }
+  });
+  const COLORS = ["#e8ff47","#ff9500","#5bb85b","#5b9bd5","#d55b5b","#b55bd5","#ffffff"];
+  const pieces = Array.from({ length: 50 }, (_, i) => ({
+    id: i, color: COLORS[i % COLORS.length],
+    left: Math.random() * 100, delay: Math.random() * 2.5,
+    dur: 2.5 + Math.random() * 2.5, size: 5 + Math.random() * 9,
+    isCircle: i % 3 === 0,
+  }));
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: "#0a0a0a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 24px", overflow: "hidden", opacity: visible ? 1 : 0, transition: "opacity 0.4s ease" }}>
+      <style>{`@keyframes cffall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(115vh) rotate(720deg);opacity:0}}`}</style>
+      {pieces.map(c => (
+        <div key={c.id} style={{ position: "absolute", top: -12, left: `${c.left}%`, width: c.size, height: c.size, background: c.color, borderRadius: c.isCircle ? "50%" : 2, animation: `cffall ${c.dur}s ${c.delay}s ease-in forwards`, opacity: 0, pointerEvents: "none" }} />
+      ))}
+      <div style={{ textAlign: "center", position: "relative", zIndex: 1, width: "100%", maxWidth: 340 }}>
+        <div style={{ fontSize: 72, marginBottom: 6, lineHeight: 1 }}>🏆</div>
+        <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 44, letterSpacing: 2, color: accent, lineHeight: 1 }}>WORKOUT</div>
+        <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 44, letterSpacing: 2, color: "#fff", lineHeight: 1, marginBottom: 28 }}>COMPLETE!</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: prs.length ? 16 : 28 }}>
+          {[
+            { label: "Duration", value: `${workout.duration || 0}m`, icon: "⏱" },
+            { label: "Exercises", value: workout.exercises.length, icon: "📋" },
+            { label: "Sets", value: totalSets, icon: "🔁" },
+            { label: "Total Reps", value: totalReps, icon: "💪" },
+          ].map(s => (
+            <div key={s.label} style={{ background: "#161616", border: "1px solid #252525", borderRadius: 16, padding: "14px 10px", textAlign: "center" }}>
+              <div style={{ fontSize: 22, marginBottom: 5 }}>{s.icon}</div>
+              <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 28, color: accent, lineHeight: 1 }}>{s.value}</div>
+              <div style={{ fontSize: 10, color: "#555", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 4 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+        {prs.length > 0 && (
+          <div style={{ background: "rgba(255,149,0,0.08)", border: "1px solid rgba(255,149,0,0.3)", borderRadius: 14, padding: "12px 16px", marginBottom: 24 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#ff9500", marginBottom: 8 }}>👑 New Personal Records!</div>
+            {prs.map((pr, i) => (
+              <div key={i} style={{ fontSize: 13, color: "#ccc", marginBottom: i < prs.length - 1 ? 4 : 0 }}>
+                <span style={{ color: "#ff9500", fontWeight: 700 }}>{pr.name}</span> — {pr.weight} lbs
+              </div>
+            ))}
+          </div>
+        )}
+        <button onClick={onClose} style={{ background: accent, color: "#000", border: "none", borderRadius: 16, padding: "16px 0", fontSize: 18, fontWeight: 700, cursor: "pointer", touchAction: "manipulation", width: "100%", fontFamily: "'Bebas Neue', cursive", letterSpacing: 1 }}>
+          LET'S GO 💪
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main App ──────────────────────────────────────────────────────────
 export default function App() {
   const [authedUser, setAuthedUser] = useState(() => { try { return sessionStorage.getItem("gymtrack-user") || null; } catch { return null; } });
@@ -1100,7 +1194,7 @@ export default function App() {
   const [workout, setWorkout] = useState(null);
   const [exSearch, setExSearch] = useState("");
   const [showExPicker, setShowExPicker] = useState(false);
-  const [finishMsg, setFinishMsg] = useState(false);
+  const [completedWorkout, setCompletedWorkout] = useState(null);
   const [theme, setTheme] = useState(() => { try { return localStorage.getItem("gymtrack-theme") || "dark"; } catch { return "dark"; } });
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileDraft, setProfileDraft] = useState({});
@@ -1157,8 +1251,10 @@ export default function App() {
   };
   const finishWorkout = () => {
     const cleaned = { ...workout, duration: Math.round((Date.now() - workout.startTime) / 60000), exercises: workout.exercises.map(e => ({ ...e, sets: e.sets.filter(s => s.weight !== "" || s.reps !== "") })).filter(e => e.sets.length > 0) };
+    const prev = data.workouts;
     save({ ...data, workouts: [cleaned, ...data.workouts] });
-    setWorkout(null); setView("home"); setFinishMsg(true); setTimeout(() => setFinishMsg(false), 3000);
+    setWorkout(null); setView("home");
+    setCompletedWorkout({ workout: cleaned, prevWorkouts: prev });
   };
   const exportCSV = () => {
     const rows = [["Date", "Exercise", "Set", "Weight (lbs)", "Reps", "Tags"]];
@@ -1194,13 +1290,14 @@ export default function App() {
   return (
     <ThemeCtx.Provider value={theme}>
     <div style={{ background: t.bg, minHeight: "100vh", color: t.text, fontFamily: "'DM Sans', sans-serif", maxWidth: 420, margin: "0 auto", position: "relative", paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))", transition: "background 0.3s, color 0.3s" }}>
-      {finishMsg && <div style={{ position: "fixed", top: "env(safe-area-inset-top, 16px)", left: "50%", transform: "translateX(-50%)", background: accent, color: "#000", borderRadius: 14, padding: "12px 24px", fontWeight: 700, fontSize: 15, zIndex: 999, boxShadow: "0 8px 32px rgba(232,255,71,0.5)", display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}>✓ Workout saved!</div>}
+      {completedWorkout && <WorkoutCompleteScreen workout={completedWorkout.workout} prevWorkouts={completedWorkout.prevWorkouts} onClose={() => setCompletedWorkout(null)} />}
 
       {/* ── HOME ─────────────────────────── */}
       {view === "home" && (() => {
         const hour = new Date().getHours();
         const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
         const displayName = profile.firstName || authedUser;
+        const streak = calcStreak(data.workouts);
         const statsRow = [
           { label: "Total", value: data.workouts.length, icon: "🏋️" },
           { label: "This week", value: data.workouts.filter(w => (new Date() - new Date(w.date)) / 86400000 <= 7).length, icon: "🗓" },
@@ -1216,6 +1313,7 @@ export default function App() {
                   {displayName} <span style={{ color: accent }}>💪</span>
                 </div>
                 <div style={{ color: t.textMuted, fontSize: 12, marginTop: 5 }}>{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</div>
+                {streak > 0 && <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,149,0,0.12)", border: "1px solid rgba(255,149,0,0.3)", borderRadius: 20, padding: "4px 12px", fontSize: 12, color: "#ff9500", fontWeight: 700, marginTop: 8 }}>🔥 {streak} day streak</div>}
               </div>
               <HelpBtn page="home" onOpen={() => setHelpPage("home")} />
             </div>
@@ -1279,6 +1377,16 @@ export default function App() {
           </div>
 
           <RestTimer />
+
+          {/* Quick-log last session */}
+          {data.workouts.length > 0 && workout && workout.exercises.length === 0 && (
+            <button onClick={() => {
+              const last = data.workouts[0];
+              setWorkout(w => ({ ...w, exercises: last.exercises.map(ex => ({ name: ex.name, sets: ex.sets.map(s => ({ weight: s.weight, reps: s.reps })) })) }));
+            }} style={{ width: "100%", background: t.surfaceHigh, border: `1px dashed ${accent}55`, borderRadius: 14, color: t.textSub, padding: "13px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 14, touchAction: "manipulation" }}>
+              <span style={{ fontSize: 16 }}>↩</span> Repeat Last Session
+            </button>
+          )}
 
           {/* Load previous */}
           {(() => {
