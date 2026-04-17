@@ -118,7 +118,7 @@ const makeStyles = (t) => ({
 // v1.2.1  2026-04-08  Profile: Security Settings added — change email and password with verification flow
 // v1.2.2  2026-04-08  Fixed critical bug: useStorage useEffect was resetting user data on profile edits
 // v2.0.0  2026-04-16  Rebranded to Rep Set. Steel Blue colour system. Visual overhaul. 1RM estimator, exercise notes, plate calculator.
-const APP_VERSION = "0.3.9";
+const APP_VERSION = "0.3.10";
 const BUILD_DATE  = "2026-04-16";
 
 const getUserKey = (u) => `gymtrack-data-${u}`;
@@ -186,6 +186,88 @@ const formatDate = (iso) => new Date(iso).toLocaleDateString("en-US", { month: "
 const formatDay  = (iso) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 const epley1RM   = (w, r) => (w > 0 && r > 0 && r <= 15) ? Math.round(w * (1 + r / 30)) : null;
 
+// ── AI Coach ──────────────────────────────────────────────────────────
+// Pure function: analyses past sessions for an exercise and returns a
+// contextual suggestion pushing progressive overload (or recovery).
+// Returns null if nothing useful to say (e.g., zero history and no data).
+function coachFor(exerciseName, workouts) {
+  const sessions = (workouts || [])
+    .filter(w => w.exercises?.some(e => e.name === exerciseName))
+    .map(w => {
+      const ex = w.exercises.find(e => e.name === exerciseName);
+      const topSet = ex.sets.reduce((best, s) => {
+        const wt = parseFloat(s.weight), rp = parseFloat(s.reps);
+        if (!wt || !rp) return best;
+        if (!best) return { weight: wt, reps: rp, rpe: s.rpe, rir: s.rir };
+        if (wt > best.weight || (wt === best.weight && rp > best.reps)) return { weight: wt, reps: rp, rpe: s.rpe, rir: s.rir };
+        return best;
+      }, null);
+      const avgRpe = (() => {
+        const r = ex.sets.map(s => parseFloat(s.rpe)).filter(n => !isNaN(n));
+        return r.length ? r.reduce((a,b)=>a+b,0) / r.length : null;
+      })();
+      const avgRir = (() => {
+        const r = ex.sets.map(s => parseFloat(s.rir)).filter(n => !isNaN(n));
+        return r.length ? r.reduce((a,b)=>a+b,0) / r.length : null;
+      })();
+      return { date: w.date, top: topSet, avgRpe, avgRir, setCount: ex.sets.length };
+    })
+    .filter(s => s.top)
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  if (sessions.length === 0) {
+    return { tone: "intro", message: "First time logging this lift — start light and own the form. We'll track progress from here." };
+  }
+
+  const last = sessions[0];
+  const daysSince = Math.round((Date.now() - new Date(last.date)) / 86400000);
+
+  // Welcome back
+  if (daysSince >= 14) {
+    return { tone: "comeback", target: { weight: Math.round(last.top.weight * 0.9 / 2.5) * 2.5, reps: last.top.reps },
+      message: `Back after ${daysSince} days — ease in around ${Math.round(last.top.weight * 0.9 / 2.5) * 2.5} × ${last.top.reps}, rebuild before pushing.` };
+  }
+
+  // Over-reaching: recent avg RPE ≥ 9.5
+  const recent3 = sessions.slice(0, 3);
+  const avgRpeRecent = recent3.map(s => s.avgRpe).filter(x => x != null);
+  if (avgRpeRecent.length >= 2 && avgRpeRecent.reduce((a,b)=>a+b,0)/avgRpeRecent.length >= 9.2) {
+    const deload = Math.round(last.top.weight * 0.9 / 2.5) * 2.5;
+    return { tone: "recover", target: { weight: deload, reps: last.top.reps },
+      message: `You've been redlining (avg RPE ~${(avgRpeRecent.reduce((a,b)=>a+b,0)/avgRpeRecent.length).toFixed(1)}). Deload to ${deload} × ${last.top.reps} — come back stronger.` };
+  }
+
+  // Reps in reserve ≥ 2 → user has room to push
+  if (last.avgRir != null && last.avgRir >= 2) {
+    const extraReps = Math.min(Math.floor(last.avgRir), 3);
+    return { tone: "push", target: { weight: last.top.weight, reps: last.top.reps + extraReps },
+      message: `You left ${last.avgRir.toFixed(0)} in the tank last time. Push for ${last.top.weight} × ${last.top.reps + extraReps} today.` };
+  }
+  if (last.avgRpe != null && last.avgRpe <= 7.5) {
+    const extraReps = 2;
+    return { tone: "push", target: { weight: last.top.weight, reps: last.top.reps + extraReps },
+      message: `RPE was only ~${last.avgRpe.toFixed(1)} — you can do more. Aim for ${last.top.weight} × ${last.top.reps + extraReps}.` };
+  }
+
+  // Stalled: same top weight × reps for 3+ sessions
+  if (sessions.length >= 3 &&
+      sessions.slice(0,3).every(s => s.top.weight === last.top.weight && s.top.reps === last.top.reps)) {
+    const bumpW = last.top.weight + (last.top.weight >= 135 ? 5 : 2.5);
+    return { tone: "breakthrough", target: { weight: bumpW, reps: last.top.reps },
+      message: `Stalled at ${last.top.weight} × ${last.top.reps} for 3 sessions. Time to break through — try ${bumpW} × ${last.top.reps}.` };
+  }
+
+  // Default progressive overload nudge
+  const nextReps = last.top.reps + 1;
+  if (nextReps <= 12) {
+    return { tone: "progress", target: { weight: last.top.weight, reps: nextReps },
+      message: `Last: ${last.top.weight} × ${last.top.reps}. Go for ${last.top.weight} × ${nextReps} today — one more rep is a PR.` };
+  }
+  const bumpW = last.top.weight + (last.top.weight >= 135 ? 5 : 2.5);
+  return { tone: "progress", target: { weight: bumpW, reps: Math.max(5, last.top.reps - 2) },
+    message: `You're cruising at ${last.top.reps} reps — bump the weight to ${bumpW} × ${Math.max(5, last.top.reps - 2)}.` };
+}
+
 // ── Icons ─────────────────────────────────────────────────────────────
 const Icon = ({ name, size = 18 }) => {
   const p = {
@@ -208,6 +290,7 @@ const Icon = ({ name, size = 18 }) => {
     home:     <><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></>,
     book:     <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>,
     shield:   <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></>,
+    zap:      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>,
     gear:     <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{p[name]}</svg>;
@@ -229,7 +312,8 @@ const HELP_CONTENT = {
     emoji: "📋",
     sections: [
       { heading: "Add an Exercise", body: "Tap 'Add Exercise', then search or type a custom name. Custom exercises stick around for next time." },
-      { heading: "Log Your Sets", body: "Enter weight and reps, tap '+ Add Set' for more. Tap × to remove a set." },
+      { heading: "Log Your Sets", body: "Enter weight and reps, tap '+ Add Set' for more. Tap the RPE chip on each set to rate effort (6–10) and set Reps in Reserve." },
+      { heading: "AI Coach", body: "Each exercise shows a Coach card with a target based on your history. Tap 'Apply' to pre-fill the suggestion, or dismiss it." },
       { heading: "Rest Timer", body: "Pick a preset (30s–3m) and tap Start between sets. The ring turns green when rest is done." },
       { heading: "Reuse Past Workouts", body: "If you've tagged sessions in History, load them here as a template." },
     ],
@@ -793,20 +877,102 @@ function Big3PRs({ workouts }) {
 // ── Set Row ───────────────────────────────────────────────────────────
 function SetRow({ set, index, onChange, onRemove }) {
   const t = useT(); const S = useS();
+  const [showRpe, setShowRpe] = useState(false);
+  const rpe = set.rpe != null ? parseFloat(set.rpe) : null;
+  const rir = set.rir != null ? parseFloat(set.rir) : (rpe != null ? Math.round(10 - rpe) : null);
+  const hasRpe = rpe != null;
+
+  const toneColor = rpe == null ? t.textMuted
+    : rpe >= 9.5 ? "#d55b5b"
+    : rpe >= 8.5 ? "#ff9500"
+    : "#5bb85b";
+
   return (
-    <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-      <span style={{ width: 22, color: t.textMuted, fontSize: 13, textAlign: "center" }}>{index + 1}</span>
-      <input type="number" inputMode="decimal" placeholder="lbs" value={set.weight} onChange={e => onChange({ ...set, weight: e.target.value })} style={S.inputStyle({ width: 88 })} />
-      <span style={{ color: t.textMuted, fontSize: 13 }}>×</span>
-      <input type="number" inputMode="numeric" placeholder="reps" value={set.reps} onChange={e => onChange({ ...set, reps: e.target.value })} style={S.inputStyle({ width: 80 })} />
-      <button onClick={onRemove} style={S.iconBtn("#ff5b5b")}><Icon name="x" size={14} /></button>
+    <div style={{ marginBottom: 8 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <span style={{ width: 22, color: t.textMuted, fontSize: 13, textAlign: "center", flexShrink: 0 }}>{index + 1}</span>
+        <input type="number" inputMode="decimal" placeholder="lbs" value={set.weight} onChange={e => onChange({ ...set, weight: e.target.value })} style={S.inputStyle({ width: 88 })} />
+        <span style={{ color: t.textMuted, fontSize: 13 }}>×</span>
+        <input type="number" inputMode="numeric" placeholder="reps" value={set.reps} onChange={e => onChange({ ...set, reps: e.target.value })} style={S.inputStyle({ width: 80 })} />
+        {/* RPE chip */}
+        <button
+          onClick={() => { setShowRpe(v => !v); haptic(8); }}
+          style={{
+            background: hasRpe ? `${toneColor}18` : "transparent",
+            border: `1px solid ${hasRpe ? toneColor + "66" : t.border}`,
+            borderRadius: 8, padding: "6px 9px", fontSize: 11, fontWeight: 700,
+            color: hasRpe ? toneColor : t.textMuted, cursor: "pointer",
+            whiteSpace: "nowrap", flexShrink: 0, minHeight: 36, touchAction: "manipulation",
+            transition: "all 0.15s",
+          }}
+        >
+          {hasRpe ? `@${rpe % 1 === 0 ? rpe : rpe.toFixed(1)}` : "RPE"}
+        </button>
+        <button onClick={onRemove} style={S.iconBtn("#ff5b5b")}><Icon name="x" size={14} /></button>
+      </div>
+
+      {/* Expanded RPE/RIR panel */}
+      {showRpe && (
+        <div style={{
+          marginTop: 8, marginLeft: 30, background: t.surfaceHigh,
+          border: `1px solid ${t.border}`, borderRadius: 12, padding: "14px 16px",
+        }}>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, letterSpacing: 0.5 }}>RPE — Rate of Perceived Exertion</span>
+              <span style={{ fontSize: 15, fontWeight: 800, color: toneColor }}>{rpe != null ? rpe : "—"}</span>
+            </div>
+            <input
+              type="range" min="6" max="10" step="0.5"
+              value={rpe ?? 7}
+              onChange={e => {
+                const v = parseFloat(e.target.value);
+                onChange({ ...set, rpe: v, rir: set.rir != null ? set.rir : Math.round(10 - v) });
+              }}
+              style={{ width: "100%", accentColor: toneColor, cursor: "pointer" }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: t.textMuted, marginTop: 2 }}>
+              <span>6 Easy</span><span>7.5 Moderate</span><span>9 Hard</span><span>10 Max</span>
+            </div>
+          </div>
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, letterSpacing: 0.5 }}>RIR — Reps in Reserve</span>
+              <span style={{ fontSize: 15, fontWeight: 800, color: accent }}>{rir != null ? rir : "—"}</span>
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              {[0, 1, 2, 3, 4, 5].map(n => (
+                <button key={n} onClick={() => onChange({ ...set, rir: n, rpe: set.rpe != null ? set.rpe : Math.max(6, 10 - n) })}
+                  style={{
+                    flex: 1, padding: "8px 0", fontSize: 13, fontWeight: 700, borderRadius: 8,
+                    background: rir === n ? `${accent}22` : "transparent",
+                    border: `1px solid ${rir === n ? accent : t.border}`,
+                    color: rir === n ? accent : t.textSub,
+                    cursor: "pointer", touchAction: "manipulation",
+                  }}
+                >{n}</button>
+              ))}
+            </div>
+            <div style={{ fontSize: 10, color: t.textMuted, marginTop: 4, textAlign: "center" }}>
+              0 = nothing left · 3 = 3 more possible
+            </div>
+          </div>
+          <button onClick={() => { onChange({ ...set, rpe: undefined, rir: undefined }); setShowRpe(false); }}
+            style={{ marginTop: 12, background: "transparent", border: `1px solid ${t.border}`, borderRadius: 8, padding: "6px 14px", fontSize: 11, color: t.textMuted, cursor: "pointer", width: "100%", touchAction: "manipulation" }}>
+            Clear RPE / RIR
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
 // ── Exercise Block ────────────────────────────────────────────────────
-function ExerciseBlock({ exercise, onChange, onRemove }) {
+function ExerciseBlock({ exercise, onChange, onRemove, workouts }) {
   const S = useS();
+  const t = useT();
+  const [coachDismissed, setCoachDismissed] = useState(false);
+
   const addSet = () => {
     const last = exercise.sets[exercise.sets.length - 1];
     if (last && (last.weight || last.reps)) { window.dispatchEvent(new Event("gt-start-timer")); }
@@ -815,13 +981,66 @@ function ExerciseBlock({ exercise, onChange, onRemove }) {
   };
   const updateSet = (i, s) => { const sets = [...exercise.sets]; sets[i] = s; onChange({ ...exercise, sets }); };
   const removeSet = (i) => onChange({ ...exercise, sets: exercise.sets.filter((_, j) => j !== i) });
-  const t = useT();
+
+  const coach = coachFor(exercise.name, workouts);
+
+  const coachColors = {
+    intro:        { bg: `${accent}12`,       border: `${accent}44`,       icon: accent,     label: "First Lift" },
+    comeback:     { bg: "rgba(255,149,0,.1)", border: "rgba(255,149,0,.4)", icon: "#ff9500", label: "Welcome Back" },
+    recover:      { bg: "rgba(213,91,91,.1)", border: "rgba(213,91,91,.4)", icon: "#d55b5b", label: "Recover" },
+    push:         { bg: "rgba(91,184,91,.1)", border: "rgba(91,184,91,.4)", icon: "#5bb85b", label: "Push It" },
+    breakthrough: { bg: "rgba(255,149,0,.1)", border: "rgba(255,149,0,.4)", icon: "#ff9500", label: "Break Through" },
+    progress:     { bg: `${accent}12`,       border: `${accent}44`,       icon: accent,     label: "Next Target" },
+  };
+  const cc = coach ? coachColors[coach.tone] || coachColors.progress : null;
+
   return (
     <div style={S.card()}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
         <span style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 20, letterSpacing: 1, color: accent }}>{exercise.name}</span>
         <button onClick={onRemove} style={S.iconBtn("#ff5b5b")}><Icon name="trash" size={15} /></button>
       </div>
+
+      {/* Coach card */}
+      {coach && !coachDismissed && (
+        <div style={{
+          background: cc.bg, border: `1px solid ${cc.border}`, borderRadius: 12,
+          padding: "11px 14px", marginBottom: 14, display: "flex", alignItems: "flex-start", gap: 10,
+        }}>
+          <div style={{ color: cc.icon, flexShrink: 0, marginTop: 1 }}><Icon name="zap" size={15} /></div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: cc.icon, letterSpacing: 0.8, marginBottom: 3, textTransform: "uppercase" }}>
+              Coach · {cc.label}
+            </div>
+            <div style={{ fontSize: 13, color: t.textSub, lineHeight: 1.5 }}>{coach.message}</div>
+            {coach.target && (
+              <div style={{ marginTop: 7, display: "flex", gap: 6 }}>
+                <button
+                  onClick={() => {
+                    if (!exercise.sets.some(s => !s.weight && !s.reps)) {
+                      onChange({ ...exercise, sets: [...exercise.sets, { weight: String(coach.target.weight), reps: String(coach.target.reps) }] });
+                    } else {
+                      const sets = exercise.sets.map(s => (!s.weight && !s.reps) ? { ...s, weight: String(coach.target.weight), reps: String(coach.target.reps) } : s);
+                      onChange({ ...exercise, sets });
+                    }
+                    setCoachDismissed(true);
+                    haptic([10, 30, 10]);
+                  }}
+                  style={{
+                    background: cc.icon, color: "#fff", border: "none", borderRadius: 8,
+                    padding: "7px 13px", fontSize: 12, fontWeight: 700, cursor: "pointer", touchAction: "manipulation",
+                  }}
+                >Apply {coach.target.weight} × {coach.target.reps}</button>
+                <button onClick={() => setCoachDismissed(true)}
+                  style={{ background: "transparent", border: `1px solid ${t.border}`, borderRadius: 8, padding: "7px 11px", fontSize: 12, color: t.textMuted, cursor: "pointer", touchAction: "manipulation" }}>
+                  Dismiss
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div style={{ marginBottom: 8 }}>
         {exercise.sets.map((s, i) => <SetRow key={i} set={s} index={i} onChange={s => updateSet(i, s)} onRemove={() => removeSet(i)} />)}
       </div>
@@ -1872,7 +2091,7 @@ export default function App() {
           })()}
 
           {workout && workout.exercises.map((ex, i) => (
-            <ExerciseBlock key={i} exercise={ex}
+            <ExerciseBlock key={i} exercise={ex} workouts={data.workouts}
               onChange={updated => { const exercises = [...workout.exercises]; exercises[i] = updated; setWorkout({ ...workout, exercises }); }}
               onRemove={() => setWorkout({ ...workout, exercises: workout.exercises.filter((_, j) => j !== i) })}
             />
