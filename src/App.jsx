@@ -117,7 +117,7 @@ const makeStyles = (t) => ({
 // v1.2.1  2026-04-08  Profile: Security Settings added — change email and password with verification flow
 // v1.2.2  2026-04-08  Fixed critical bug: useStorage useEffect was resetting user data on profile edits
 // v2.0.0  2026-04-16  Rebranded to Rep Set. Steel Blue colour system. Visual overhaul. 1RM estimator, exercise notes, plate calculator.
-const APP_VERSION = "0.3.6";
+const APP_VERSION = "0.3.7";
 const BUILD_DATE  = "2026-04-16";
 
 const getUserKey = (u) => `gymtrack-data-${u}`;
@@ -531,7 +531,7 @@ function DualLineChart({ points, lineColor = WEIGHT_COLOR }) {
   const [hovered, setHovered] = useState(null);
   if (!points.length) return <div style={{ color: t.textMuted, fontSize: 12, padding: "16px 0", textAlign: "center" }}>Log at least one session to see this chart</div>;
 
-  const W = 340, H = 150, padL = 38, padR = 38, padT = 20, padB = 32;
+  const W = 340, H = 170, padL = 38, padR = 38, padT = 36, padB = 32;
   const plotW = W - padL - padR, plotH = H - padT - padB;
 
   // Weight scale (left axis)
@@ -635,7 +635,7 @@ function DualLineChart({ points, lineColor = WEIGHT_COLOR }) {
                 {isHov && (() => {
                   const ttW = 96, ttH = hasReps ? 44 : 34;
                   const ttX = Math.min(Math.max(cx - ttW/2, padL), W - padR - ttW);
-                  const ttY = Math.min(cyw, hasReps && cyr !== null ? cyr : cyw) - ttH - 10;
+                  const ttY = Math.max(4, Math.min(cyw, hasReps && cyr !== null ? cyr : cyw) - ttH - 12);
                   return (
                     <g>
                       <rect x={ttX} y={ttY} width={ttW} height={ttH} rx={7}
@@ -673,15 +673,15 @@ function DualLineChart({ points, lineColor = WEIGHT_COLOR }) {
       </div>
 
       {/* Legend */}
-      <div style={{ display: "flex", gap: 16, marginTop: 6, fontSize: 11, color: t.textMuted }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 20, marginTop: 8, fontSize: 11, color: t.textMuted }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <svg width="20" height="8"><line x1="0" y1="4" x2="20" y2="4" stroke={WEIGHT_COLOR} strokeWidth="2.5" /></svg>
-          <span style={{ color: WEIGHT_COLOR }}>Weight (lbs)</span>
+          <span style={{ color: WEIGHT_COLOR, fontWeight: 600 }}>Weight (lbs)</span>
         </span>
         {hasReps && (
-          <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <svg width="20" height="8"><line x1="0" y1="4" x2="20" y2="4" stroke={REPS_COLOR} strokeWidth="2" strokeDasharray="5,3" /></svg>
-            <span style={{ color: REPS_COLOR }}>Reps</span>
+            <span style={{ color: REPS_COLOR, fontWeight: 600 }}>Reps</span>
           </span>
         )}
       </div>
@@ -1986,9 +1986,9 @@ export default function App() {
                         </div>
                       </div>
                       <LineChart points={pts} lineColor={lc} />
-                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 10, color: t.textMuted }}>
-                        <span>← Days →</span>
-                        <span style={{ color: gain > 0 ? "#5bb85b" : gain < 0 ? "#d55b5b" : t.textMuted, fontWeight: 600 }}>{gain > 0 ? "▲" : gain < 0 ? "▼" : "—"} {Math.abs(gain)} lbs total</span>
+                      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 16, marginTop: 2, fontSize: 10, color: t.textMuted }}>
+                        <span style={{ letterSpacing: 0.5 }}>← Sessions →</span>
+                        <span style={{ color: gain > 0 ? "#5bb85b" : gain < 0 ? "#d55b5b" : t.textMuted, fontWeight: 700 }}>{gain > 0 ? "▲" : gain < 0 ? "▼" : "—"} {Math.abs(gain)} lbs</span>
                       </div>
                     </div>
                   );
