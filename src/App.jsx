@@ -117,7 +117,7 @@ const makeStyles = (t) => ({
 // v1.2.1  2026-04-08  Profile: Security Settings added — change email and password with verification flow
 // v1.2.2  2026-04-08  Fixed critical bug: useStorage useEffect was resetting user data on profile edits
 // v2.0.0  2026-04-16  Rebranded to Rep Set. Steel Blue colour system. Visual overhaul. 1RM estimator, exercise notes, plate calculator.
-const APP_VERSION = "0.3.7";
+const APP_VERSION = "0.3.8";
 const BUILD_DATE  = "2026-04-16";
 
 const getUserKey = (u) => `gymtrack-data-${u}`;
@@ -528,17 +528,22 @@ function LineChart({ points, lineColor = WEIGHT_COLOR }) {
 
 function DualLineChart({ points, lineColor = WEIGHT_COLOR }) {
   const t = useT();
-  const [hovered, setHovered] = useState(null);
-  if (!points.length) return <div style={{ color: t.textMuted, fontSize: 12, padding: "16px 0", textAlign: "center" }}>Log at least one session to see this chart</div>;
+  const [selected, setSelected] = useState(null);
+  const svgRef = useRef(null);
+  const dismissRef = useRef(null);
+
+  if (!points.length) return (
+    <div style={{ color: t.textMuted, fontSize: 13, padding: "20px 0", textAlign: "center" }}>
+      Log at least one session to see this chart
+    </div>
+  );
 
   const W = 340, H = 170, padL = 38, padR = 38, padT = 36, padB = 32;
   const plotW = W - padL - padR, plotH = H - padT - padB;
 
-  // Weight scale (left axis)
   const wVals = points.map(p => p.value);
   const wMin = Math.min(...wVals), wMax = Math.max(...wVals), wRange = wMax - wMin || 1;
 
-  // Reps scale (right axis) — only if reps data exists
   const hasReps = points.some(p => p.reps > 0);
   const rVals = points.map(p => p.reps || 0);
   const rMin = Math.max(0, Math.min(...rVals) - 1), rMax = Math.max(...rVals) + 1, rRange = rMax - rMin || 1;
@@ -547,32 +552,80 @@ function DualLineChart({ points, lineColor = WEIGHT_COLOR }) {
   const toYw = (v) => padT + plotH - ((v - wMin) / wRange) * plotH;
   const toYr = (v) => padT + plotH - ((v - rMin) / rRange) * plotH;
 
-  // Current PR: find the single best session (highest weight; more reps breaks ties).
-  // Only that one session gets the crown — not every historical milestone.
-  const prIdx = points.reduce((bestI, p, i) => {
-    const best = points[bestI];
-    if (p.value > best.value) return i;
-    if (p.value === best.value && (p.reps || 0) > (best.reps || 0)) return i;
-    return bestI;
+  const prIdx = points.reduce((best, p, i) => {
+    const b = points[best];
+    if (p.value > b.value) return i;
+    if (p.value === b.value && (p.reps || 0) > (b.reps || 0)) return i;
+    return best;
   }, 0);
-  const runningPRs = points.map((_, i) => i === prIdx);
 
   const wPolyline = points.map((p, i) => `${toX(i)},${toYw(p.value)}`).join(" ");
   const rPolyline = hasReps ? points.map((p, i) => `${toX(i)},${toYr(p.reps || 0)}`).join(" ") : "";
-
   const wAreaPath = points.length > 1
-    ? `M${toX(0)},${toYw(points[0].value)} ${points.slice(1).map((p,i) => `L${toX(i+1)},${toYw(p.value)}`).join(" ")} L${toX(points.length-1)},${padT+plotH} L${toX(0)},${padT+plotH} Z`
+    ? `M${toX(0)},${toYw(points[0].value)} ${points.slice(1).map((p, i) => `L${toX(i+1)},${toYw(p.value)}`).join(" ")} L${toX(points.length-1)},${padT+plotH} L${toX(0)},${padT+plotH} Z`
     : "";
 
   const yTickVals = Array.from({ length: 4 }, (_, i) => wMin + (wRange / 3) * i);
   const rTickVals = hasReps ? Array.from({ length: 4 }, (_, i) => Math.round(rMin + (rRange / 3) * i)) : [];
+  const wGradId = `wgrad-${lineColor.replace("#", "")}`;
 
-  const wGradId = `wgrad-${lineColor.replace("#","")}`;
+  // ── Touch / mouse interaction ──────────────────────────────────────
+  // Finds nearest point index from a raw clientX coordinate
+  const nearestIdx = (clientX) => {
+    const svg = svgRef.current;
+    if (!svg) return 0;
+    const rect = svg.getBoundingClientRect();
+    const svgX = ((clientX - rect.left) / rect.width) * W;
+    let best = 0, bestD = Infinity;
+    points.forEach((_, i) => { const d = Math.abs(toX(i) - svgX); if (d < bestD) { bestD = d; best = i; } });
+    return best;
+  };
+
+  const onInteract = (e) => {
+    e.preventDefault();
+    clearTimeout(dismissRef.current);
+    const src = e.touches ? e.touches[0] : e;
+    setSelected(nearestIdx(src.clientX));
+  };
+
+  const onTouchEnd = () => {
+    // Keep tooltip visible for 4 s after lifting finger, then fade
+    clearTimeout(dismissRef.current);
+    dismissRef.current = setTimeout(() => setSelected(null), 4000);
+  };
+
+  const onMouseLeave = () => {
+    clearTimeout(dismissRef.current);
+    setSelected(null);
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────
+  const selPt   = selected !== null ? points[selected] : null;
+  const selX    = selected !== null ? toX(selected) : null;
+  const selIsPR = selected === prIdx;
+
+  // Info pill content — built as a string so we can measure width
+  const pillText = selPt
+    ? `${formatDay(selPt.date)}  ·  ${selPt.value} lbs${hasReps && selPt.reps > 0 ? `  ·  ${selPt.reps} reps` : ""}${selIsPR ? "  👑" : ""}`
+    : "";
+  const pillW = Math.min(plotW, 60 + pillText.length * 6.2);
+  const pillH = 26;
+  const pillY = 4;
+  const pillX = selX !== null ? Math.min(Math.max(selX - pillW / 2, padL), W - padR - pillW) : 0;
+
+  // X-axis label index set
+  const xShown = (() => {
+    const n = points.length;
+    if (n <= 1) return new Set([0]);
+    const slots = Math.min(5, n);
+    const step = (n - 1) / (slots - 1);
+    return new Set(Array.from({ length: slots }, (_, k) => Math.round(k * step)));
+  })();
 
   return (
     <div>
-      <div style={{ overflowX: "auto" }}>
-        <svg width={W} height={H} style={{ display: "block", overflow: "visible" }}>
+      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+        <svg ref={svgRef} width={W} height={H} style={{ display: "block", overflow: "visible", touchAction: "none" }}>
           <defs>
             <linearGradient id={wGradId} x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={WEIGHT_COLOR} stopOpacity="0.15" />
@@ -580,7 +633,7 @@ function DualLineChart({ points, lineColor = WEIGHT_COLOR }) {
             </linearGradient>
           </defs>
 
-          {/* Grid + left (weight) axis labels */}
+          {/* Grid + left axis */}
           {yTickVals.map((v, i) => (
             <g key={i}>
               <line x1={padL} y1={toYw(v)} x2={W-padR} y2={toYw(v)} stroke={t.border} strokeWidth="1" strokeDasharray={i === 0 ? "0" : "3,3"} />
@@ -588,83 +641,86 @@ function DualLineChart({ points, lineColor = WEIGHT_COLOR }) {
             </g>
           ))}
 
-          {/* Right (reps) axis labels */}
+          {/* Right (reps) axis */}
           {hasReps && rTickVals.map((v, i) => (
             <text key={i} x={W-padR+5} y={toYr(v)+4} textAnchor="start" fontSize="9" fill={REPS_COLOR} opacity="0.8">{v}</text>
           ))}
 
-          {/* Weight area fill */}
+          {/* Area fill */}
           {wAreaPath && <path d={wAreaPath} fill={`url(#${wGradId})`} />}
 
-          {/* Reps line (dashed, behind weight line) */}
+          {/* Reps line */}
           {hasReps && points.length > 1 && (
             <polyline points={rPolyline} fill="none" stroke={REPS_COLOR} strokeWidth="2" strokeDasharray="5,3" strokeLinejoin="round" strokeLinecap="round" opacity="0.85" />
           )}
 
-          {/* Weight line (solid, on top) */}
+          {/* Weight line */}
           {points.length > 1 && (
             <polyline points={wPolyline} fill="none" stroke={WEIGHT_COLOR} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
           )}
 
-          {/* Dots + hover zones */}
+          {/* Vertical guide line for selected point */}
+          {selX !== null && (
+            <line x1={selX} y1={padT} x2={selX} y2={padT+plotH}
+              stroke={selIsPR ? "#ff9500" : "#5B9BD5"} strokeWidth="1.5" strokeDasharray="4,3" opacity="0.55" />
+          )}
+
+          {/* Dots */}
           {points.map((p, i) => {
-            const cx = toX(i);
-            const cyw = toYw(p.value);
-            const cyr = hasReps ? toYr(p.reps || 0) : null;
-            const isPR = runningPRs[i];
-            const isHov = hovered === i;
+            const cx = toX(i), cyw = toYw(p.value), cyr = hasReps ? toYr(p.reps || 0) : null;
+            const isPR = i === prIdx, isSel = selected === i;
             return (
               <g key={i}>
-                {/* Hover capture zone */}
-                <rect x={cx-16} y={padT} width={32} height={plotH} fill="transparent" style={{ cursor: "pointer" }}
-                  onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)}
-                  onTouchStart={() => setHovered(i)} onTouchEnd={() => setTimeout(() => setHovered(null), 1400)}
-                />
-                {/* Weight dot */}
-                <circle cx={cx} cy={cyw} r={isPR ? 5.5 : isHov ? 5 : 3.5}
+                {/* Weight dot — glow ring when selected */}
+                {isSel && <circle cx={cx} cy={cyw} r={11} fill={isPR ? "#ff9500" : WEIGHT_COLOR} opacity="0.12" />}
+                <circle cx={cx} cy={cyw} r={isPR ? 5.5 : isSel ? 5.5 : 3.5}
                   fill={isPR ? "#ff9500" : WEIGHT_COLOR}
-                  stroke={isHov ? "#fff" : "transparent"} strokeWidth="2" />
-                {isPR && <text x={cx} y={cyw-10} textAnchor="middle" fontSize="11">👑</text>}
+                  stroke={isSel || isPR ? "#fff" : "transparent"} strokeWidth="2" />
+                {isPR && <text x={cx} y={cyw-11} textAnchor="middle" fontSize="12">👑</text>}
                 {/* Reps dot */}
                 {hasReps && cyr !== null && (
-                  <circle cx={cx} cy={cyr} r={isHov ? 4.5 : 3}
-                    fill={REPS_COLOR}
-                    stroke={isHov ? "#fff" : "transparent"} strokeWidth="1.5" />
+                  <g>
+                    {isSel && <circle cx={cx} cy={cyr} r={9} fill={REPS_COLOR} opacity="0.12" />}
+                    <circle cx={cx} cy={cyr} r={isSel ? 5 : 3}
+                      fill={REPS_COLOR} stroke={isSel ? "#fff" : "transparent"} strokeWidth="1.5" />
+                  </g>
                 )}
-                {/* Tooltip */}
-                {isHov && (() => {
-                  const ttW = 96, ttH = hasReps ? 44 : 34;
-                  const ttX = Math.min(Math.max(cx - ttW/2, padL), W - padR - ttW);
-                  const ttY = Math.max(4, Math.min(cyw, hasReps && cyr !== null ? cyr : cyw) - ttH - 12);
-                  return (
-                    <g>
-                      <rect x={ttX} y={ttY} width={ttW} height={ttH} rx={7}
-                        fill={t.surfaceHigh} stroke={t.border} strokeWidth="1" />
-                      <text x={ttX+ttW/2} y={ttY+14} textAnchor="middle" fontSize="11" fontWeight="700"
-                        fill={isPR ? "#ff9500" : WEIGHT_COLOR}>{p.value} lbs</text>
-                      {hasReps && p.reps > 0 && (
-                        <text x={ttX+ttW/2} y={ttY+28} textAnchor="middle" fontSize="11" fontWeight="700"
-                          fill={REPS_COLOR}>{p.reps} reps</text>
-                      )}
-                      <text x={ttX+ttW/2} y={ttY+ttH-5} textAnchor="middle" fontSize="9"
-                        fill={t.textMuted}>{formatDay(p.date)}</text>
-                    </g>
-                  );
-                })()}
-                {/* X-axis date labels — max 5, evenly spaced */}
-                {(() => {
-                  const n = points.length;
-                  if (n <= 1) return true;
-                  const slots = Math.min(5, n);
-                  const step = (n - 1) / (slots - 1);
-                  const shown = Array.from({ length: slots }, (_, k) => Math.round(k * step));
-                  return shown.includes(i);
-                })() && (
-                  <text x={cx} y={H-4} textAnchor="middle" fontSize="9" fill={t.textMuted}>{formatDay(p.date)}</text>
+                {/* X-axis label — highlighted when selected */}
+                {(xShown.has(i) || isSel) && (
+                  <text x={cx} y={H-4} textAnchor="middle" fontSize="9"
+                    fill={isSel ? (selIsPR ? "#ff9500" : "#5B9BD5") : t.textMuted}
+                    fontWeight={isSel ? "700" : "400"}>
+                    {formatDay(p.date)}
+                  </text>
                 )}
               </g>
             );
           })}
+
+          {/* Info pill — anchored to top, always fully visible */}
+          {selPt && (
+            <g>
+              <rect x={pillX} y={pillY} width={pillW} height={pillH} rx={13}
+                fill={t.surfaceHigh}
+                stroke={selIsPR ? "#ff9500" : "#5B9BD5"} strokeWidth="1.5"
+                style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.35))" }} />
+              <text x={pillX + pillW/2} y={pillY + 17} textAnchor="middle"
+                fontSize="10.5" fontWeight="700" fill={selIsPR ? "#ff9500" : t.text}>
+                {pillText}
+              </text>
+            </g>
+          )}
+
+          {/* Single full-area touch/mouse capture overlay — renders last so it's on top */}
+          <rect x={padL} y={padT} width={plotW} height={plotH}
+            fill="transparent"
+            style={{ cursor: "crosshair", WebkitTapHighlightColor: "transparent" }}
+            onMouseMove={onInteract}
+            onMouseLeave={onMouseLeave}
+            onTouchStart={onInteract}
+            onTouchMove={onInteract}
+            onTouchEnd={onTouchEnd}
+          />
 
           {/* Axis lines */}
           <line x1={padL} y1={padT} x2={padL} y2={padT+plotH} stroke={t.border} strokeWidth="1" />
