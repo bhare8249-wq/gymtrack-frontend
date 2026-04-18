@@ -1,0 +1,77 @@
+<svg width="2732" height="2732" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#1E1E2A"/>
+      <stop offset="100%" stop-color="#0A0A0A"/>
+    </radialGradient>
+    <linearGradient id="plate" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6BAAE0"/>
+      <stop offset="100%" stop-color="#4278B0"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7BBAF0"/>
+      <stop offset="100%" stop-color="#4A8BC4"/>
+    </linearGradient>
+    <linearGradient id="plateInner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#5B9BD5"/>
+      <stop offset="100%" stop-color="#3A6E9E"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="2732" height="2732" fill="url(#bg)"/>
+
+  <!-- Barbell group — centered at 1366,1200, scaled ~2.2x from 1024 icon -->
+  <g transform="translate(320, 900) scale(2.66)">
+    <!-- Left outer weight plate -->
+    <rect x="68" y="336" width="112" height="352" rx="28" fill="url(#plate)"/>
+    <rect x="68" y="336" width="112" height="28" rx="14" fill="#8BCAFF" opacity="0.3"/>
+
+    <!-- Left inner weight plate -->
+    <rect x="196" y="384" width="74" height="256" rx="20" fill="url(#plateInner)"/>
+
+    <!-- Center bar -->
+    <rect x="270" y="464" width="484" height="96" rx="14" fill="url(#bar)"/>
+    <rect x="270" y="464" width="484" height="22" rx="11" fill="#AADDFF" opacity="0.25"/>
+
+    <!-- Right inner weight plate -->
+    <rect x="754" y="384" width="74" height="256" rx="20" fill="url(#plateInner)"/>
+
+    <!-- Right outer weight plate -->
+    <rect x="844" y="336" width="112" height="352" rx="28" fill="url(#plate)"/>
+    <rect x="844" y="336" width="112" height="28" rx="14" fill="#8BCAFF" opacity="0.3"/>
+
+    <!-- Subtle center glow -->
+    <ellipse cx="512" cy="512" rx="300" ry="80" fill="#5B9BD5" opacity="0.06"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text
+    x="1366" y="2020"
+    font-family="Arial, Helvetica, sans-serif"
+    font-size="180"
+    font-weight="700"
+    letter-spacing="32"
+    text-anchor="middle"
+    fill="#FFFFFF">BARBELL</text>
+
+  <text
+    x="1366" y="2220"
+    font-family="Arial, Helvetica, sans-serif"
+    font-size="180"
+    font-weight="700"
+    letter-spacing="64"
+    text-anchor="middle"
+    fill="#5B9BD5">LABS</text>
+
+  <!-- Tagline -->
+  <text
+    x="1366" y="2360"
+    font-family="Arial, Helvetica, sans-serif"
+    font-size="72"
+    font-weight="400"
+    letter-spacing="12"
+    text-anchor="middle"
+    fill="#8899AA"
+    opacity="0.8">TRAIN · LOG · IMPROVE</text>
+</svg>
