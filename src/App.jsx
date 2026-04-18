@@ -420,7 +420,7 @@ function HelpModal({ page, onClose }) {
           ))}
           <div style={{ textAlign: "center", paddingTop: 8, paddingBottom: 4 }}>
             <div style={{ fontSize: 11, color: t.textMuted }}>
-              Rep Set v{APP_VERSION} · Built {BUILD_DATE}
+              Barbell Labs v{APP_VERSION} · Built {BUILD_DATE}
             </div>
           </div>
         </div>
@@ -1479,8 +1479,8 @@ function LandingPage({ onNewUser }) {
       <div style={{ textAlign: "center", marginBottom: 40 }}>
         <div style={{ height: 1, background: `linear-gradient(90deg, transparent, ${accent}, transparent)`, marginBottom: 14, transformOrigin: "center", animation: "gt-line-grow 1.4s cubic-bezier(0.16,1,0.3,1) 0.2s both" }} />
         <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 52, lineHeight: 1, display: "flex", alignItems: "baseline", justifyContent: "center" }}>
-          <span style={{ color: "#ffffff", letterSpacing: 4, animation: "gt-gym-in 1.2s cubic-bezier(0.16,1,0.3,1) 0.6s both", display: "inline-block" }}>REP</span>
-          <span style={{ color: accent, letterSpacing: 4, animation: "gt-track-in 1.2s cubic-bezier(0.16,1,0.3,1) 1.3s both, gt-accent-pulse 3s ease-in-out 3s infinite", display: "inline-block" }}>SET</span>
+          <span style={{ color: "#ffffff", letterSpacing: 4, animation: "gt-gym-in 1.2s cubic-bezier(0.16,1,0.3,1) 0.6s both", display: "inline-block" }}>BARBELL</span>
+          <span style={{ color: accent, letterSpacing: 4, animation: "gt-track-in 1.2s cubic-bezier(0.16,1,0.3,1) 1.3s both, gt-accent-pulse 3s ease-in-out 3s infinite", display: "inline-block" }}>LABS</span>
         </div>
         <div style={{ height: 1, background: `linear-gradient(90deg, transparent, ${accent}55, transparent)`, marginTop: 14, transformOrigin: "center", animation: "gt-line-grow 1.4s cubic-bezier(0.16,1,0.3,1) 0.9s both" }} />
         <div style={{ color: "#444", fontSize: 13, marginTop: 12, letterSpacing: 2, textTransform: "uppercase", animation: "gt-tag-in 1s ease 2.2s both" }}>Train · Log · Improve</div>
@@ -1860,7 +1860,7 @@ export default function App() {
     const dataUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
     const a = document.createElement("a");
     a.href = dataUri;
-    a.download = `repset-${authedUser}-${todayISO()}.csv`;
+    a.download = `barbellabs-${authedUser}-${todayISO()}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1900,7 +1900,7 @@ export default function App() {
         return (
           <div style={{ padding: "52px 20px 24px" }}>
             {/* Logo */}
-            <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 32, letterSpacing: 2, lineHeight: 1, marginBottom: 8 }}>REP<span style={{ color: accent }}>SET</span></div>
+            <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 32, letterSpacing: 2, lineHeight: 1, marginBottom: 8 }}>BARBELL<span style={{ color: accent }}>LABS</span></div>
             {/* Header */}
             <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
@@ -2350,7 +2350,7 @@ export default function App() {
                   <div style={{ fontSize: 11, color: t.textMuted, lineHeight: 1.9 }}>
                     <div>Version <span style={{ color: accent, fontWeight: 700 }}>{APP_VERSION}</span></div>
                     <div>Build Date: {BUILD_DATE}</div>
-                    <div style={{ marginTop: 4, opacity: 0.4 }}>Rep Set © 2026</div>
+                    <div style={{ marginTop: 4, opacity: 0.4 }}>Barbell Labs © 2026</div>
                   </div>
                 </div>
               </div>

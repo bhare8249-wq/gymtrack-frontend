@@ -1,7 +1,7 @@
 {
-  "short_name": "GymTrack",
-  "name": "GymTrack — Train. Log. Improve.",
-  "description": "Track your workouts, monitor progress, and hit new PRs.",
+  "short_name": "Barbell Labs",
+  "name": "Barbell Labs — Train. Log. Improve.",
+  "description": "Track your workouts, monitor progress, and hit new PRs with Barbell Labs.",
   "icons": [
     {
       "src": "favicon.ico",
