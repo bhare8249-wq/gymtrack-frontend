@@ -78,7 +78,7 @@ const makeStyles = (t) => ({
     background: "transparent", border: "none", cursor: "pointer",
     color: color || t.textMuted, padding: 10, display: "flex", alignItems: "center",
     justifyContent: "center", borderRadius: 10, transition: "opacity 0.15s",
-    minWidth: 40, minHeight: 40, touchAction: "manipulation",
+    minWidth: 44, minHeight: 44, touchAction: "manipulation",
   }),
   ghostBtn: (extra = {}) => ({
     display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "transparent",
@@ -133,8 +133,21 @@ const makeStyles = (t) => ({
 // v1.2.1  2026-04-08  Profile: Security Settings added — change email and password with verification flow
 // v1.2.2  2026-04-08  Fixed critical bug: useStorage useEffect was resetting user data on profile edits
 // v2.0.0  2026-04-16  Rebranded to Rep Set. Steel Blue colour system. Visual overhaul. 1RM estimator, exercise notes, plate calculator.
-const APP_VERSION = "0.3.10";
-const BUILD_DATE  = "2026-04-16";
+// v2.1.0  2026-04-18  Gym Bible: 224-exercise library with category + equipment filters in exercise picker
+// v2.2.0  2026-04-18  My Top Lifts: fully customizable — pick any 3 exercises to track as personal records
+// v2.2.1  2026-04-18  Touch UX pass: all tap targets ≥44px, exercise picker chips enlarged, rest timer, RPE, labels, coach buttons
+// v2.2.2  2026-04-18  My Top Lifts Edit/Cancel/Save buttons styled as pills matching Help button
+// v2.2.3  2026-04-18  Exercise picker chip rows: swipeable with pan-x + iOS momentum scroll
+// v2.3.0  2026-04-18  iOS momentum scrolling on all containers + global touch polish in index.html
+// v2.3.1  2026-04-18  Pill buttons unified: shared pillBtn/pillBtnPrimary style, Help + Edit now identical height
+// v2.3.2  2026-04-18  Settings button on home restyled to match Help pill
+// v2.3.3  2026-04-18  Settings pill moved from Home to Profile nav, sits beside Edit and Help
+// v2.3.4  2026-04-18  User manual HTML created; Profile section opens /user-manual.html in new tab
+// v2.3.5  2026-04-18  Renamed all gymtrack references to barbelllabs across project
+// v2.4.0  2026-04-18  Weekly volume bar chart in Progress tab; bodyweight log + mini chart on Home tab
+// v2.4.1  2026-04-18  Bodyweight chart upgraded to full interactive progression chart; widget moved to Profile tab
+const APP_VERSION = "2.4.1";
+const BUILD_DATE  = "2026-04-18";
 
 function useStorage(uid) {
   const [data, setData] = useState({ workouts: [], bodyweight: [] });
@@ -166,12 +179,254 @@ const isAdminUser = () => false;
 })();
 
 
-const BIG3 = ["Bench Press", "Squat", "Deadlift"];
-const DEFAULT_EXERCISES = [
-  "Bench Press", "Squat", "Deadlift", "Overhead Press", "Pull-Up",
-  "Barbell Row", "Dumbbell Curl", "Tricep Pushdown", "Leg Press",
-  "Lat Pulldown", "Cable Row", "Incline Press",
+const GYM_BIBLE = [
+  // CHEST
+  { name: "Barbell Bench Press", cat: "chest", equip: "barbell", level: "intermediate", muscles: "Pectorals, Triceps, Front Delts" },
+  { name: "Incline Barbell Bench Press", cat: "chest", equip: "barbell", level: "intermediate", muscles: "Upper Pecs, Triceps, Front Delts" },
+  { name: "Decline Barbell Bench Press", cat: "chest", equip: "barbell", level: "intermediate", muscles: "Lower Pecs, Triceps" },
+  { name: "Close-Grip Bench Press", cat: "chest", equip: "barbell", level: "intermediate", muscles: "Triceps, Inner Pecs" },
+  { name: "Dumbbell Bench Press", cat: "chest", equip: "dumbbell", level: "beginner", muscles: "Pectorals, Triceps, Front Delts" },
+  { name: "Incline Dumbbell Press", cat: "chest", equip: "dumbbell", level: "beginner", muscles: "Upper Pecs, Triceps" },
+  { name: "Decline Dumbbell Press", cat: "chest", equip: "dumbbell", level: "beginner", muscles: "Lower Pecs, Triceps" },
+  { name: "Dumbbell Flye", cat: "chest", equip: "dumbbell", level: "beginner", muscles: "Pectorals (stretch emphasis)" },
+  { name: "Incline Dumbbell Flye", cat: "chest", equip: "dumbbell", level: "beginner", muscles: "Upper Pecs" },
+  { name: "Dumbbell Pullover", cat: "chest", equip: "dumbbell", level: "intermediate", muscles: "Pecs, Lats, Serratus" },
+  { name: "Cable Crossover", cat: "chest", equip: "cable", level: "beginner", muscles: "Pectorals (contraction emphasis)" },
+  { name: "High-to-Low Cable Flye", cat: "chest", equip: "cable", level: "beginner", muscles: "Lower Pecs" },
+  { name: "Low-to-High Cable Flye", cat: "chest", equip: "cable", level: "beginner", muscles: "Upper Pecs" },
+  { name: "Single-Arm Cable Press", cat: "chest", equip: "cable", level: "intermediate", muscles: "Pecs, Core Stability" },
+  { name: "Chest Press Machine", cat: "chest", equip: "machine", level: "beginner", muscles: "Pectorals, Triceps" },
+  { name: "Incline Chest Press Machine", cat: "chest", equip: "machine", level: "beginner", muscles: "Upper Pecs, Triceps" },
+  { name: "Pec Deck / Butterfly Machine", cat: "chest", equip: "machine", level: "beginner", muscles: "Pectorals" },
+  { name: "Smith Machine Bench Press", cat: "chest", equip: "machine", level: "beginner", muscles: "Pectorals, Triceps" },
+  { name: "Smith Machine Incline Press", cat: "chest", equip: "machine", level: "beginner", muscles: "Upper Pecs, Triceps" },
+  { name: "Push-Up", cat: "chest", equip: "bodyweight", level: "beginner", muscles: "Pecs, Triceps, Core" },
+  { name: "Wide-Grip Push-Up", cat: "chest", equip: "bodyweight", level: "beginner", muscles: "Outer Pecs" },
+  { name: "Diamond Push-Up", cat: "chest", equip: "bodyweight", level: "intermediate", muscles: "Triceps, Inner Pecs" },
+  { name: "Decline Push-Up", cat: "chest", equip: "bodyweight", level: "intermediate", muscles: "Upper Pecs" },
+  { name: "Incline Push-Up", cat: "chest", equip: "bodyweight", level: "beginner", muscles: "Lower Pecs" },
+  { name: "Plyometric (Clap) Push-Up", cat: "chest", equip: "bodyweight", level: "advanced", muscles: "Explosive Pecs, Triceps" },
+  { name: "Chest Dips", cat: "chest", equip: "bodyweight", level: "intermediate", muscles: "Lower Pecs, Triceps" },
+  { name: "Ring Push-Up", cat: "chest", equip: "other", level: "advanced", muscles: "Pecs, Stability Muscles" },
+  // BACK
+  { name: "Conventional Deadlift", cat: "back", equip: "barbell", level: "advanced", muscles: "Erectors, Glutes, Hamstrings, Traps" },
+  { name: "Sumo Deadlift", cat: "back", equip: "barbell", level: "advanced", muscles: "Glutes, Inner Thighs, Lower Back" },
+  { name: "Romanian Deadlift", cat: "back", equip: "barbell", level: "intermediate", muscles: "Hamstrings, Glutes, Lower Back" },
+  { name: "Barbell Row (Bent-Over)", cat: "back", equip: "barbell", level: "intermediate", muscles: "Lats, Rhomboids, Traps, Biceps" },
+  { name: "Pendlay Row", cat: "back", equip: "barbell", level: "advanced", muscles: "Mid-Back, Lats, Traps" },
+  { name: "T-Bar Row", cat: "back", equip: "barbell", level: "intermediate", muscles: "Lats, Rhomboids, Traps" },
+  { name: "Good Morning", cat: "back", equip: "barbell", level: "intermediate", muscles: "Hamstrings, Erectors, Glutes" },
+  { name: "Barbell Shrug", cat: "back", equip: "barbell", level: "beginner", muscles: "Upper Traps" },
+  { name: "Dumbbell Row (One-Arm)", cat: "back", equip: "dumbbell", level: "beginner", muscles: "Lats, Rhomboids, Rear Delts" },
+  { name: "Dumbbell Romanian Deadlift", cat: "back", equip: "dumbbell", level: "beginner", muscles: "Hamstrings, Glutes, Lower Back" },
+  { name: "Renegade Row", cat: "back", equip: "dumbbell", level: "intermediate", muscles: "Lats, Core, Triceps" },
+  { name: "Dumbbell Shrug", cat: "back", equip: "dumbbell", level: "beginner", muscles: "Upper Traps" },
+  { name: "Dumbbell Pullover", cat: "back", equip: "dumbbell", level: "intermediate", muscles: "Lats, Chest, Serratus" },
+  { name: "Lat Pulldown (Wide Grip)", cat: "back", equip: "machine", level: "beginner", muscles: "Lats, Biceps, Rhomboids" },
+  { name: "Lat Pulldown (Close Grip)", cat: "back", equip: "machine", level: "beginner", muscles: "Lats (thickness), Biceps" },
+  { name: "Lat Pulldown (Underhand)", cat: "back", equip: "machine", level: "beginner", muscles: "Lats, Biceps" },
+  { name: "Seated Cable Row (Close Grip)", cat: "back", equip: "cable", level: "beginner", muscles: "Mid-Back, Lats, Biceps" },
+  { name: "Seated Cable Row (Wide Grip)", cat: "back", equip: "cable", level: "beginner", muscles: "Upper Back, Rear Delts" },
+  { name: "Single-Arm Cable Row", cat: "back", equip: "cable", level: "beginner", muscles: "Unilateral Lats, Rhomboids" },
+  { name: "Straight-Arm Cable Pulldown", cat: "back", equip: "cable", level: "intermediate", muscles: "Lats, Teres Major" },
+  { name: "Cable Pull-Through", cat: "back", equip: "cable", level: "beginner", muscles: "Hamstrings, Glutes, Lower Back" },
+  { name: "Seated Row Machine", cat: "back", equip: "machine", level: "beginner", muscles: "Mid-Back, Rhomboids" },
+  { name: "Chest-Supported Row Machine", cat: "back", equip: "machine", level: "beginner", muscles: "Rhomboids, Mid-Traps" },
+  { name: "Back Extension Machine", cat: "back", equip: "machine", level: "beginner", muscles: "Erectors, Glutes" },
+  { name: "Pull-Up (Overhand)", cat: "back", equip: "bodyweight", level: "advanced", muscles: "Lats, Biceps, Rear Delts" },
+  { name: "Chin-Up (Underhand)", cat: "back", equip: "bodyweight", level: "intermediate", muscles: "Lats, Biceps" },
+  { name: "Neutral-Grip Pull-Up", cat: "back", equip: "bodyweight", level: "intermediate", muscles: "Lats, Brachialis" },
+  { name: "Assisted Pull-Up Machine", cat: "back", equip: "machine", level: "beginner", muscles: "Lats, Biceps" },
+  { name: "Inverted Row", cat: "back", equip: "bodyweight", level: "beginner", muscles: "Mid-Back, Rhomboids, Biceps" },
+  { name: "Back Extension (Roman Chair)", cat: "back", equip: "bodyweight", level: "beginner", muscles: "Erectors, Glutes" },
+  // SHOULDERS
+  { name: "Barbell Overhead Press (Standing)", cat: "shoulders", equip: "barbell", level: "intermediate", muscles: "All Deltoids, Traps, Triceps, Core" },
+  { name: "Barbell Overhead Press (Seated)", cat: "shoulders", equip: "barbell", level: "beginner", muscles: "All Deltoids, Traps, Triceps" },
+  { name: "Push Press", cat: "shoulders", equip: "barbell", level: "advanced", muscles: "Deltoids, Legs, Triceps" },
+  { name: "Barbell Upright Row", cat: "shoulders", equip: "barbell", level: "intermediate", muscles: "Lateral Delts, Traps" },
+  { name: "Dumbbell Overhead Press", cat: "shoulders", equip: "dumbbell", level: "beginner", muscles: "All Deltoids, Traps" },
+  { name: "Arnold Press", cat: "shoulders", equip: "dumbbell", level: "intermediate", muscles: "All Deltoids (full rotation)" },
+  { name: "Lateral Raise", cat: "shoulders", equip: "dumbbell", level: "beginner", muscles: "Lateral Deltoid" },
+  { name: "Front Raise", cat: "shoulders", equip: "dumbbell", level: "beginner", muscles: "Anterior Deltoid" },
+  { name: "Bent-Over Rear Delt Raise", cat: "shoulders", equip: "dumbbell", level: "beginner", muscles: "Rear Deltoid, Rhomboids" },
+  { name: "Dumbbell Upright Row", cat: "shoulders", equip: "dumbbell", level: "beginner", muscles: "Lateral Delts, Traps" },
+  { name: "Cable Lateral Raise", cat: "shoulders", equip: "cable", level: "beginner", muscles: "Lateral Deltoid (constant tension)" },
+  { name: "Face Pull", cat: "shoulders", equip: "cable", level: "beginner", muscles: "Rear Delts, Rotator Cuff, Traps" },
+  { name: "Cable Front Raise", cat: "shoulders", equip: "cable", level: "beginner", muscles: "Anterior Deltoid" },
+  { name: "Cable Upright Row", cat: "shoulders", equip: "cable", level: "intermediate", muscles: "Lateral Delts, Traps" },
+  { name: "Shoulder Press Machine", cat: "shoulders", equip: "machine", level: "beginner", muscles: "Deltoids, Triceps" },
+  { name: "Lateral Raise Machine", cat: "shoulders", equip: "machine", level: "beginner", muscles: "Lateral Deltoid" },
+  { name: "Rear Delt Flye Machine", cat: "shoulders", equip: "machine", level: "beginner", muscles: "Rear Deltoid" },
+  { name: "Smith Machine OHP", cat: "shoulders", equip: "machine", level: "beginner", muscles: "Deltoids, Triceps" },
+  { name: "Pike Push-Up", cat: "shoulders", equip: "bodyweight", level: "intermediate", muscles: "Anterior Delts, Triceps" },
+  { name: "Handstand Push-Up", cat: "shoulders", equip: "bodyweight", level: "advanced", muscles: "All Deltoids, Triceps, Traps" },
+  { name: "Resistance Band Lateral Raise", cat: "shoulders", equip: "other", level: "beginner", muscles: "Lateral Deltoid" },
+  // ARMS
+  { name: "Barbell Curl", cat: "arms", equip: "barbell", level: "beginner", muscles: "Biceps, Brachialis" },
+  { name: "EZ-Bar Curl", cat: "arms", equip: "barbell", level: "beginner", muscles: "Biceps, Brachialis (wrist-friendly)" },
+  { name: "Preacher Curl (EZ-Bar)", cat: "arms", equip: "barbell", level: "beginner", muscles: "Biceps Lower Head" },
+  { name: "Skull Crusher (EZ-Bar)", cat: "arms", equip: "barbell", level: "intermediate", muscles: "Triceps Long Head" },
+  { name: "Barbell Reverse Curl", cat: "arms", equip: "barbell", level: "beginner", muscles: "Brachioradialis, Biceps" },
+  { name: "Barbell Wrist Curl", cat: "arms", equip: "barbell", level: "beginner", muscles: "Forearm Flexors" },
+  { name: "Dumbbell Curl (Alternating)", cat: "arms", equip: "dumbbell", level: "beginner", muscles: "Biceps, Brachialis" },
+  { name: "Hammer Curl", cat: "arms", equip: "dumbbell", level: "beginner", muscles: "Brachialis, Brachioradialis" },
+  { name: "Incline Dumbbell Curl", cat: "arms", equip: "dumbbell", level: "beginner", muscles: "Biceps Long Head" },
+  { name: "Concentration Curl", cat: "arms", equip: "dumbbell", level: "beginner", muscles: "Biceps Peak" },
+  { name: "Zottman Curl", cat: "arms", equip: "dumbbell", level: "intermediate", muscles: "Full Bicep + Brachioradialis" },
+  { name: "Dumbbell Overhead Tricep Extension", cat: "arms", equip: "dumbbell", level: "beginner", muscles: "Triceps Long Head" },
+  { name: "Dumbbell Kickback", cat: "arms", equip: "dumbbell", level: "beginner", muscles: "Triceps Lateral Head" },
+  { name: "Dumbbell Skull Crusher", cat: "arms", equip: "dumbbell", level: "intermediate", muscles: "Triceps" },
+  { name: "Reverse Wrist Curl (Dumbbell)", cat: "arms", equip: "dumbbell", level: "beginner", muscles: "Forearm Extensors" },
+  { name: "Cable Curl (Bar)", cat: "arms", equip: "cable", level: "beginner", muscles: "Biceps (constant tension)" },
+  { name: "Cable Curl (Rope)", cat: "arms", equip: "cable", level: "beginner", muscles: "Biceps, Brachialis" },
+  { name: "Overhead Cable Curl", cat: "arms", equip: "cable", level: "intermediate", muscles: "Biceps Long Head (peak)" },
+  { name: "Cable Pushdown (Rope)", cat: "arms", equip: "cable", level: "beginner", muscles: "Triceps Lateral Head" },
+  { name: "Cable Pushdown (Straight Bar)", cat: "arms", equip: "cable", level: "beginner", muscles: "Triceps" },
+  { name: "Overhead Cable Tricep Extension", cat: "arms", equip: "cable", level: "beginner", muscles: "Triceps Long Head" },
+  { name: "Single-Arm Cable Pushdown", cat: "arms", equip: "cable", level: "beginner", muscles: "Triceps (unilateral)" },
+  { name: "Bicep Curl Machine", cat: "arms", equip: "machine", level: "beginner", muscles: "Biceps" },
+  { name: "Preacher Curl Machine", cat: "arms", equip: "machine", level: "beginner", muscles: "Biceps Lower Head" },
+  { name: "Tricep Pushdown Machine", cat: "arms", equip: "machine", level: "beginner", muscles: "Triceps" },
+  { name: "Tricep Dips (Bench)", cat: "arms", equip: "bodyweight", level: "beginner", muscles: "Triceps, Chest" },
+  { name: "Parallel Bar Dips (Tricep Focus)", cat: "arms", equip: "bodyweight", level: "intermediate", muscles: "Triceps" },
+  // LEGS
+  { name: "Barbell Back Squat", cat: "legs", equip: "barbell", level: "intermediate", muscles: "Quads, Glutes, Hamstrings, Core" },
+  { name: "Barbell Front Squat", cat: "legs", equip: "barbell", level: "advanced", muscles: "Quads, Glutes, Core (upright torso)" },
+  { name: "Barbell Lunge", cat: "legs", equip: "barbell", level: "intermediate", muscles: "Quads, Glutes, Hamstrings" },
+  { name: "Barbell Hip Thrust", cat: "legs", equip: "barbell", level: "intermediate", muscles: "Glutes (max contraction)" },
+  { name: "Barbell Step-Up", cat: "legs", equip: "barbell", level: "intermediate", muscles: "Quads, Glutes" },
+  { name: "Barbell Romanian Deadlift", cat: "legs", equip: "barbell", level: "intermediate", muscles: "Hamstrings, Glutes, Lower Back" },
+  { name: "Barbell Sumo Squat", cat: "legs", equip: "barbell", level: "intermediate", muscles: "Inner Thighs, Glutes, Quads" },
+  { name: "Barbell Calf Raise (Standing)", cat: "legs", equip: "barbell", level: "beginner", muscles: "Gastrocnemius, Soleus" },
+  { name: "Barbell Bulgarian Split Squat", cat: "legs", equip: "barbell", level: "advanced", muscles: "Quads, Glutes, Hip Flexors" },
+  { name: "Goblet Squat", cat: "legs", equip: "dumbbell", level: "beginner", muscles: "Quads, Glutes, Core" },
+  { name: "Dumbbell Lunge (Alternating)", cat: "legs", equip: "dumbbell", level: "beginner", muscles: "Quads, Glutes" },
+  { name: "Dumbbell Step-Up", cat: "legs", equip: "dumbbell", level: "beginner", muscles: "Quads, Glutes" },
+  { name: "Dumbbell Hip Thrust", cat: "legs", equip: "dumbbell", level: "beginner", muscles: "Glutes" },
+  { name: "Dumbbell Romanian Deadlift", cat: "legs", equip: "dumbbell", level: "beginner", muscles: "Hamstrings, Glutes" },
+  { name: "Dumbbell Bulgarian Split Squat", cat: "legs", equip: "dumbbell", level: "intermediate", muscles: "Quads, Glutes, Balance" },
+  { name: "Dumbbell Sumo Squat", cat: "legs", equip: "dumbbell", level: "beginner", muscles: "Inner Thighs, Glutes" },
+  { name: "Dumbbell Calf Raise (Standing)", cat: "legs", equip: "dumbbell", level: "beginner", muscles: "Calves" },
+  { name: "Leg Press", cat: "legs", equip: "machine", level: "beginner", muscles: "Quads, Glutes, Hamstrings" },
+  { name: "Hack Squat Machine", cat: "legs", equip: "machine", level: "intermediate", muscles: "Quads, Glutes" },
+  { name: "Leg Extension", cat: "legs", equip: "machine", level: "beginner", muscles: "Quadriceps (isolation)" },
+  { name: "Lying Leg Curl", cat: "legs", equip: "machine", level: "beginner", muscles: "Hamstrings" },
+  { name: "Seated Leg Curl", cat: "legs", equip: "machine", level: "beginner", muscles: "Hamstrings" },
+  { name: "Seated Calf Raise Machine", cat: "legs", equip: "machine", level: "beginner", muscles: "Soleus" },
+  { name: "Standing Calf Raise Machine", cat: "legs", equip: "machine", level: "beginner", muscles: "Gastrocnemius" },
+  { name: "Hip Abductor Machine", cat: "legs", equip: "machine", level: "beginner", muscles: "Gluteus Medius, TFL" },
+  { name: "Hip Adductor Machine", cat: "legs", equip: "machine", level: "beginner", muscles: "Inner Thighs (Adductors)" },
+  { name: "Glute Kickback Machine", cat: "legs", equip: "machine", level: "beginner", muscles: "Glutes" },
+  { name: "Smith Machine Squat", cat: "legs", equip: "machine", level: "beginner", muscles: "Quads, Glutes" },
+  { name: "Cable Hip Kickback", cat: "legs", equip: "cable", level: "beginner", muscles: "Glutes" },
+  { name: "Cable Hip Abduction", cat: "legs", equip: "cable", level: "beginner", muscles: "Gluteus Medius" },
+  { name: "Cable Romanian Deadlift", cat: "legs", equip: "cable", level: "intermediate", muscles: "Hamstrings, Glutes" },
+  { name: "Bodyweight Squat", cat: "legs", equip: "bodyweight", level: "beginner", muscles: "Quads, Glutes, Hamstrings" },
+  { name: "Pistol Squat", cat: "legs", equip: "bodyweight", level: "advanced", muscles: "Quads, Glutes, Balance" },
+  { name: "Jump Squat", cat: "legs", equip: "bodyweight", level: "intermediate", muscles: "Explosive Legs, Calves" },
+  { name: "Glute Bridge", cat: "legs", equip: "bodyweight", level: "beginner", muscles: "Glutes, Hamstrings" },
+  { name: "Single-Leg Glute Bridge", cat: "legs", equip: "bodyweight", level: "intermediate", muscles: "Glutes, Hamstrings (unilateral)" },
+  { name: "Walking Lunge", cat: "legs", equip: "bodyweight", level: "beginner", muscles: "Quads, Glutes" },
+  { name: "Reverse Lunge", cat: "legs", equip: "bodyweight", level: "beginner", muscles: "Quads, Glutes" },
+  { name: "Lateral Lunge", cat: "legs", equip: "bodyweight", level: "beginner", muscles: "Inner Thighs, Glutes" },
+  { name: "Donkey Kick", cat: "legs", equip: "bodyweight", level: "beginner", muscles: "Glutes" },
+  { name: "Fire Hydrant", cat: "legs", equip: "bodyweight", level: "beginner", muscles: "Gluteus Medius" },
+  { name: "Bodyweight Calf Raise (Standing)", cat: "legs", equip: "bodyweight", level: "beginner", muscles: "Gastrocnemius" },
+  { name: "Wall Sit", cat: "legs", equip: "bodyweight", level: "beginner", muscles: "Quadriceps (isometric)" },
+  // CORE
+  { name: "Plank", cat: "core", equip: "bodyweight", level: "beginner", muscles: "Transverse Abs, All Core" },
+  { name: "Side Plank", cat: "core", equip: "bodyweight", level: "beginner", muscles: "Obliques, Hip Abductors" },
+  { name: "Crunch", cat: "core", equip: "bodyweight", level: "beginner", muscles: "Rectus Abdominis" },
+  { name: "Bicycle Crunch", cat: "core", equip: "bodyweight", level: "beginner", muscles: "Obliques, Abs" },
+  { name: "Reverse Crunch", cat: "core", equip: "bodyweight", level: "beginner", muscles: "Lower Abs" },
+  { name: "Lying Leg Raise", cat: "core", equip: "bodyweight", level: "intermediate", muscles: "Lower Abs, Hip Flexors" },
+  { name: "Hanging Leg Raise", cat: "core", equip: "bodyweight", level: "advanced", muscles: "Lower Abs, Obliques" },
+  { name: "Hanging Knee Raise", cat: "core", equip: "bodyweight", level: "intermediate", muscles: "Lower Abs" },
+  { name: "Dragon Flag", cat: "core", equip: "bodyweight", level: "advanced", muscles: "Full Core, Hip Flexors" },
+  { name: "V-Up", cat: "core", equip: "bodyweight", level: "intermediate", muscles: "Full Abs" },
+  { name: "Flutter Kick", cat: "core", equip: "bodyweight", level: "beginner", muscles: "Lower Abs" },
+  { name: "Mountain Climber", cat: "core", equip: "bodyweight", level: "beginner", muscles: "Core, Hip Flexors, Cardio" },
+  { name: "Russian Twist (Bodyweight)", cat: "core", equip: "bodyweight", level: "beginner", muscles: "Obliques" },
+  { name: "Windshield Wiper", cat: "core", equip: "bodyweight", level: "advanced", muscles: "Obliques, Lower Abs" },
+  { name: "Dead Bug", cat: "core", equip: "bodyweight", level: "beginner", muscles: "Deep Core, Stability" },
+  { name: "Bird Dog", cat: "core", equip: "bodyweight", level: "beginner", muscles: "Core, Glutes, Balance" },
+  { name: "Hollow Body Hold", cat: "core", equip: "bodyweight", level: "intermediate", muscles: "Full Core" },
+  { name: "Ab Wheel Rollout", cat: "core", equip: "other", level: "advanced", muscles: "Full Core, Lats, Shoulders" },
+  { name: "Cable Crunch", cat: "core", equip: "cable", level: "beginner", muscles: "Rectus Abdominis" },
+  { name: "Pallof Press", cat: "core", equip: "cable", level: "intermediate", muscles: "Anti-Rotation Core" },
+  { name: "Cable Woodchop", cat: "core", equip: "cable", level: "intermediate", muscles: "Obliques, Core" },
+  { name: "Cable Side Bend", cat: "core", equip: "cable", level: "beginner", muscles: "Obliques" },
+  { name: "Ab Machine Crunch", cat: "core", equip: "machine", level: "beginner", muscles: "Rectus Abdominis" },
+  { name: "Roman Chair Sit-Up", cat: "core", equip: "machine", level: "beginner", muscles: "Abs, Hip Flexors" },
+  { name: "Dumbbell Side Bend", cat: "core", equip: "dumbbell", level: "beginner", muscles: "Obliques" },
+  { name: "Dumbbell Russian Twist", cat: "core", equip: "dumbbell", level: "beginner", muscles: "Obliques" },
+  { name: "Barbell Rollout", cat: "core", equip: "barbell", level: "advanced", muscles: "Full Core, Lats" },
+  { name: "Landmine Rotation", cat: "core", equip: "barbell", level: "intermediate", muscles: "Obliques, Core" },
+  // CARDIO
+  { name: "Treadmill Running", cat: "cardio", equip: "machine", level: "beginner", muscles: "Full Body Cardiovascular" },
+  { name: "Incline Treadmill Walk", cat: "cardio", equip: "machine", level: "beginner", muscles: "Calves, Glutes, Cardio" },
+  { name: "Elliptical Trainer", cat: "cardio", equip: "machine", level: "beginner", muscles: "Low-Impact Full Body Cardio" },
+  { name: "Stationary Bike", cat: "cardio", equip: "machine", level: "beginner", muscles: "Quads, Calves, Cardio" },
+  { name: "Rowing Machine (Erg)", cat: "cardio", equip: "machine", level: "intermediate", muscles: "Back, Legs, Arms — Full Body" },
+  { name: "Stair Climber", cat: "cardio", equip: "machine", level: "beginner", muscles: "Glutes, Quads, Calves" },
+  { name: "Ski Erg", cat: "cardio", equip: "machine", level: "intermediate", muscles: "Lats, Core, Arms, Cardio" },
+  { name: "Assault Bike", cat: "cardio", equip: "machine", level: "advanced", muscles: "Full Body, Max Cardio Output" },
+  { name: "Battle Ropes", cat: "cardio", equip: "other", level: "intermediate", muscles: "Shoulders, Arms, Core, Cardio" },
+  { name: "Jump Rope", cat: "cardio", equip: "other", level: "beginner", muscles: "Calves, Coordination, Cardio" },
+  { name: "Box Jump", cat: "cardio", equip: "other", level: "intermediate", muscles: "Legs, Glutes, Explosive Power" },
+  { name: "Burpee", cat: "cardio", equip: "bodyweight", level: "intermediate", muscles: "Full Body, Explosive" },
+  { name: "High Knees", cat: "cardio", equip: "bodyweight", level: "beginner", muscles: "Core, Hip Flexors, Cardio" },
+  { name: "Jumping Jacks", cat: "cardio", equip: "bodyweight", level: "beginner", muscles: "Full Body Warmup / Cardio" },
+  { name: "Sprint Intervals", cat: "cardio", equip: "bodyweight", level: "advanced", muscles: "Legs, Full Body Cardio" },
+  { name: "Bear Crawl", cat: "cardio", equip: "bodyweight", level: "intermediate", muscles: "Full Body, Core Stability" },
+  { name: "Sled Push", cat: "cardio", equip: "other", level: "intermediate", muscles: "Legs, Glutes, Cardio" },
+  { name: "Sled Pull", cat: "cardio", equip: "other", level: "intermediate", muscles: "Back, Arms, Cardio" },
+  { name: "Farmer's Carry", cat: "cardio", equip: "dumbbell", level: "intermediate", muscles: "Grip, Core, Traps, Cardio" },
+  { name: "Kettlebell Swing", cat: "cardio", equip: "other", level: "intermediate", muscles: "Glutes, Hamstrings, Core" },
+  // FULL BODY
+  { name: "Barbell Clean", cat: "full", equip: "barbell", level: "advanced", muscles: "Full Posterior Chain, Traps" },
+  { name: "Power Clean", cat: "full", equip: "barbell", level: "advanced", muscles: "Full Body Explosive" },
+  { name: "Hang Clean", cat: "full", equip: "barbell", level: "advanced", muscles: "Hamstrings, Traps, Core" },
+  { name: "Barbell Snatch", cat: "full", equip: "barbell", level: "advanced", muscles: "Full Body Olympic Lift" },
+  { name: "Hang Snatch", cat: "full", equip: "barbell", level: "advanced", muscles: "Full Body, Explosiveness" },
+  { name: "Barbell Thruster", cat: "full", equip: "barbell", level: "advanced", muscles: "Legs, Shoulders, Core" },
+  { name: "Dumbbell Thruster", cat: "full", equip: "dumbbell", level: "intermediate", muscles: "Legs, Shoulders, Core" },
+  { name: "Clean and Press", cat: "full", equip: "barbell", level: "advanced", muscles: "Full Body" },
+  { name: "Turkish Get-Up (Dumbbell)", cat: "full", equip: "dumbbell", level: "advanced", muscles: "Full Body, Stability" },
+  { name: "Kettlebell Turkish Get-Up", cat: "full", equip: "other", level: "advanced", muscles: "Full Body, Stability" },
+  { name: "Kettlebell Clean and Press", cat: "full", equip: "other", level: "intermediate", muscles: "Full Body" },
+  { name: "Man Maker", cat: "full", equip: "dumbbell", level: "advanced", muscles: "Full Body, Metabolic Conditioning" },
+  { name: "Burpee Pull-Up", cat: "full", equip: "bodyweight", level: "advanced", muscles: "Full Body" },
+  { name: "Muscle-Up", cat: "full", equip: "bodyweight", level: "advanced", muscles: "Back, Chest, Triceps" },
+  { name: "Bear Complex", cat: "full", equip: "barbell", level: "advanced", muscles: "Full Body Olympic Compound" },
+  { name: "Wall Ball", cat: "full", equip: "other", level: "intermediate", muscles: "Legs, Shoulders, Core" },
+  { name: "Sandbag Carry", cat: "full", equip: "other", level: "intermediate", muscles: "Full Body, Grip, Core" },
+  { name: "Tire Flip", cat: "full", equip: "other", level: "advanced", muscles: "Full Posterior Chain, Legs" },
+  { name: "Dumbbell Complex", cat: "full", equip: "dumbbell", level: "intermediate", muscles: "Full Body Circuit" },
 ];
+
+// Exercise picker filter constants
+const EX_CATS = [
+  { id: "all",       label: "All" },
+  { id: "chest",     label: "Chest",     color: "#ff6b6b" },
+  { id: "back",      label: "Back",      color: "#4ecdc4" },
+  { id: "shoulders", label: "Shoulders", color: "#ffe66d" },
+  { id: "arms",      label: "Arms",      color: "#a8e6cf" },
+  { id: "legs",      label: "Legs",      color: "#c3a6ff" },
+  { id: "core",      label: "Core",      color: "#ff8b94" },
+  { id: "cardio",    label: "Cardio",    color: "#ffd93d" },
+  { id: "full",      label: "Full Body", color: "#6bcb77" },
+];
+const EX_EQUIPS = [
+  { id: "all",        label: "All Equip" },
+  { id: "barbell",    label: "Barbell" },
+  { id: "dumbbell",   label: "Dumbbell" },
+  { id: "machine",    label: "Machine" },
+  { id: "cable",      label: "Cable" },
+  { id: "bodyweight", label: "Bodyweight" },
+  { id: "other",      label: "Other" },
+];
+const CAT_COLORS = { chest:"#ff6b6b", back:"#4ecdc4", shoulders:"#ffe66d", arms:"#a8e6cf", legs:"#c3a6ff", core:"#ff8b94", cardio:"#ffd93d", full:"#6bcb77", custom:"#888" };
 const WORKOUT_LABELS = [
   { id: "legs",      label: "Legs",       emoji: "🦵", color: "#5bb85b", bg: "rgba(91,184,91,0.12)",  border: "rgba(91,184,91,0.3)" },
   { id: "push",      label: "Push",       emoji: "💪", color: "#5b9bd5", bg: "rgba(91,155,213,0.12)", border: "rgba(91,155,213,0.3)" },
@@ -281,7 +536,7 @@ function coachFor(exerciseName, workouts) {
 }
 
 // ── Icons ─────────────────────────────────────────────────────────────
-const Icon = ({ name, size = 18 }) => {
+const Icon = ({ name, size = 18, color }) => {
   const p = {
     plus:     <><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>,
     trash:    <><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></>,
@@ -303,9 +558,10 @@ const Icon = ({ name, size = 18 }) => {
     book:     <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>,
     shield:   <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></>,
     zap:      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>,
-    gear:     <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
+    gear:         <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>,
+    chevronRight: <polyline points="9 18 15 12 9 6"/>,
   };
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{p[name]}</svg>;
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color || "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{p[name]}</svg>;
 };
 
 // ── Help Content ──────────────────────────────────────────────────────
@@ -408,7 +664,7 @@ function HelpModal({ page, onClose }) {
           </button>
         </div>
         {/* Scrollable content */}
-        <div style={{ overflowY: "auto", padding: "0 20px", flex: 1 }}>
+        <div style={{ overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "0 20px", flex: 1 }}>
           {content.sections.map((s, i) => (
             <div key={i} style={{ marginBottom: 20 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
@@ -429,24 +685,49 @@ function HelpModal({ page, onClose }) {
   );
 }
 
+// ── Shared pill button style ──────────────────────────────────────────
+// Used for Help, Edit, Cancel, Save across all pages.
+const pillBtn = (t, extra = {}) => ({
+  background: t.surfaceHigh,
+  border: `1px solid ${t.border}`,
+  borderRadius: 20,
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "5px 14px",
+  fontSize: 12,
+  fontWeight: 600,
+  color: t.textSub,
+  flexShrink: 0,
+  minHeight: 44,
+  touchAction: "manipulation",
+  ...extra,
+});
+
+const pillBtnPrimary = (extra = {}) => ({
+  background: `linear-gradient(135deg, ${accent}, #4A8BC4)`,
+  border: "none",
+  borderRadius: 20,
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "5px 16px",
+  fontSize: 12,
+  fontWeight: 700,
+  color: "#fff",
+  flexShrink: 0,
+  minHeight: 44,
+  touchAction: "manipulation",
+  ...extra,
+});
+
 // ── Help Button ───────────────────────────────────────────────────────
 function HelpBtn({ page, onOpen }) {
   const t = useT();
   return (
-    <button onClick={onOpen} style={{
-      background: t.surfaceHigh,
-      border: `1px solid ${t.border}`,
-      borderRadius: 20,
-      cursor: "pointer",
-      display: "flex",
-      alignItems: "center",
-      gap: 6,
-      padding: "5px 12px 5px 10px",
-      fontSize: 12,
-      fontWeight: 600,
-      color: t.textSub,
-      flexShrink: 0,
-    }}>
+    <button onClick={onOpen} style={{ ...pillBtn(t), padding: "5px 12px 5px 10px" }}>
       <span style={{
         background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#ffffff",
         borderRadius: "50%", width: 16, height: 16,
@@ -561,14 +842,14 @@ function RestTimer() {
                 background: seconds === p && !running && !isCustomActive ? accent : t.inputBg,
                 color: seconds === p && !running && !isCustomActive ? "#ffffff" : t.textSub,
                 border: `1px solid ${seconds === p && !running && !isCustomActive ? accent : t.border}`,
-                borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", minHeight: 36, touchAction: "manipulation",
+                borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", minHeight: 44, touchAction: "manipulation",
               }}>{p >= 60 ? `${p/60}m` : `${p}s`}</button>
             ))}
             <button onClick={() => setShowCustom(v => !v)} style={{
               background: isCustomActive ? accent : t.inputBg,
               color: isCustomActive ? "#ffffff" : t.textSub,
               border: `1px solid ${isCustomActive ? accent : t.border}`,
-              borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", minHeight: 36, touchAction: "manipulation",
+              borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", minHeight: 44, touchAction: "manipulation",
             }}>Custom</button>
           </div>
 
@@ -591,7 +872,7 @@ function RestTimer() {
                 style={{ width: 40, background: "transparent", border: "none", color: t.text, fontSize: 16, fontWeight: 700, textAlign: "center", outline: "none" }}
               />
               <span style={{ color: t.textMuted, fontWeight: 700, fontSize: 16 }}>s</span>
-              <button onClick={applyCustom} style={{ marginLeft: 4, background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#ffffff", border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Set</button>
+              <button onClick={applyCustom} style={{ marginLeft: 4, background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#ffffff", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", minHeight: 44, touchAction: "manipulation" }}>Set</button>
             </div>
           )}
 
@@ -836,6 +1117,179 @@ function DualLineChart({ points, lineColor = WEIGHT_COLOR }) {
   );
 }
 
+// ── Weekly Volume Bar Chart ───────────────────────────────────────────
+function VolumeBarChart({ workouts }) {
+  const t = useT();
+  const [selected, setSelected] = useState(null);
+
+  const weeks = (() => {
+    const map = {};
+    workouts.forEach(w => {
+      const d = new Date(w.date + "T12:00:00");
+      const day = d.getDay();
+      const mon = new Date(d); mon.setDate(d.getDate() - ((day + 6) % 7));
+      const key = mon.toISOString().slice(0, 10);
+      const vol = w.exercises.reduce((sum, ex) =>
+        sum + ex.sets.reduce((s2, s) =>
+          s2 + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0), 0);
+      map[key] = (map[key] || 0) + vol;
+    });
+    return Object.entries(map)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .slice(-12)
+      .map(([key, vol]) => ({ key, vol, label: new Date(key + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) }));
+  })();
+
+  if (!weeks.length) return null;
+
+  const W = 340, H = 160, padL = 40, padR = 12, padT = 20, padB = 28;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const maxVol = Math.max(...weeks.map(w => w.vol), 1);
+  const barW = Math.max(8, (plotW / weeks.length) * 0.6);
+  const gap   = plotW / weeks.length;
+
+  const barX = (i) => padL + i * gap + (gap - barW) / 2;
+  const barH = (v) => (v / maxVol) * plotH;
+  const barY = (v) => padT + plotH - barH(v);
+
+  const yticks = [0, 0.25, 0.5, 0.75, 1].map(f => Math.round(maxVol * f));
+
+  const xShown = (() => {
+    const n = weeks.length;
+    if (n <= 4) return new Set(weeks.map((_, i) => i));
+    const slots = Math.min(4, n);
+    const step  = (n - 1) / (slots - 1);
+    return new Set(Array.from({ length: slots }, (_, k) => Math.round(k * step)));
+  })();
+
+  const fmtVol = (v) => v >= 1000 ? `${(v / 1000).toFixed(1)}K` : `${Math.round(v)}`;
+
+  const selW = weeks[selected];
+  const pillText = selW ? `${selW.label}  ·  ${fmtVol(selW.vol)} lbs` : "";
+  const pillW = Math.min(plotW, 40 + pillText.length * 6.4);
+  const pillH = 24;
+  const pillY  = 2;
+  const pillX  = selected !== null
+    ? Math.min(Math.max(barX(selected) + barW / 2 - pillW / 2, padL), W - padR - pillW)
+    : 0;
+
+  return (
+    <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+      <svg width={W} height={H} style={{ display: "block", overflow: "visible" }}
+        onClick={e => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const svgX = ((e.clientX - rect.left) / rect.width) * W;
+          let best = null, bestD = Infinity;
+          weeks.forEach((_, i) => { const cx = barX(i) + barW / 2; const d = Math.abs(cx - svgX); if (d < bestD) { bestD = d; best = i; } });
+          setSelected(s => s === best ? null : best);
+        }}
+        onTouchEnd={e => {
+          const touch = e.changedTouches[0];
+          const rect = e.currentTarget.getBoundingClientRect();
+          const svgX = ((touch.clientX - rect.left) / rect.width) * W;
+          let best = null, bestD = Infinity;
+          weeks.forEach((_, i) => { const cx = barX(i) + barW / 2; const d = Math.abs(cx - svgX); if (d < bestD) { bestD = d; best = i; } });
+          setSelected(s => s === best ? null : best);
+        }}
+      >
+        {/* Y-axis ticks */}
+        {yticks.map((v, i) => (
+          <g key={i}>
+            <line x1={padL} y1={barY(v)} x2={W - padR} y2={barY(v)} stroke={t.border} strokeWidth="1" strokeDasharray={i === 0 ? "0" : "3,3"} />
+            {i > 0 && <text x={padL - 4} y={barY(v) + 4} textAnchor="end" fontSize="9" fill={accent} opacity="0.75">{fmtVol(v)}</text>}
+          </g>
+        ))}
+        {/* Bars */}
+        {weeks.map((w, i) => {
+          const isSel = selected === i;
+          const h = Math.max(3, barH(w.vol));
+          return (
+            <g key={w.key}>
+              <rect
+                x={barX(i)} y={barY(w.vol)} width={barW} height={h}
+                rx={4}
+                fill={isSel ? accent : `${accent}55`}
+                style={{ transition: "fill 0.15s" }}
+              />
+              {(xShown.has(i) || isSel) && (
+                <text x={barX(i) + barW / 2} y={H - 4} textAnchor="middle" fontSize="9"
+                  fill={isSel ? accent : t.textMuted} fontWeight={isSel ? "700" : "400"}>
+                  {w.label}
+                </text>
+              )}
+            </g>
+          );
+        })}
+        {/* Axis */}
+        <line x1={padL} y1={padT} x2={padL} y2={padT + plotH} stroke={t.border} strokeWidth="1" />
+        {/* Tooltip pill */}
+        {selW && (
+          <g>
+            <rect x={pillX} y={pillY} width={pillW} height={pillH} rx={12}
+              fill={t.surfaceHigh} stroke={accent} strokeWidth="1.5"
+              style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.35))" }} />
+            <text x={pillX + pillW / 2} y={pillY + 16} textAnchor="middle"
+              fontSize="10" fontWeight="700" fill={accent}>{pillText}</text>
+          </g>
+        )}
+      </svg>
+    </div>
+  );
+}
+
+// ── Bodyweight Mini Chart ─────────────────────────────────────────────
+function BodyweightWidget({ bodyweight, onAdd }) {
+  const t = useT(); const S = useS();
+  const [input, setInput] = useState("");
+  const latest = bodyweight.length ? bodyweight[bodyweight.length - 1] : null;
+  const today  = todayISO();
+  const alreadyToday = latest?.date === today;
+  const chartPoints = bodyweight.map(e => ({ date: e.date, value: e.weight }));
+
+  const submit = () => {
+    const w = parseFloat(input);
+    if (!w || w < 50 || w > 700) return;
+    onAdd(w);
+    setInput("");
+  };
+
+  return (
+    <div style={S.card()}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <div>
+          <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 18, letterSpacing: 1, color: t.textSub }}>
+            BODY<span style={{ color: accent }}>WEIGHT</span>
+          </div>
+          {latest
+            ? <div style={{ fontSize: 12, color: t.textMuted, marginTop: 2 }}>Last: {latest.weight} lbs · {formatDate(latest.date)}</div>
+            : <div style={{ fontSize: 12, color: t.textMuted, marginTop: 2 }}>Not logged yet — add your first entry below</div>
+          }
+        </div>
+        {alreadyToday && <div style={{ fontSize: 12, color: "#5bb85b", fontWeight: 700 }}>✓ Logged today</div>}
+      </div>
+      {!alreadyToday && (
+        <div style={{ display: "flex", gap: 8, marginBottom: chartPoints.length ? 16 : 0 }}>
+          <input
+            type="number" inputMode="decimal" placeholder="Enter weight (lbs)"
+            value={input} onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && submit()}
+            style={{ ...S.inputStyle({ flex: 1, width: "auto" }) }}
+          />
+          <button onClick={submit} style={{ ...S.solidBtn(), padding: "12px 18px", fontSize: 13, borderRadius: 12, minHeight: 44, touchAction: "manipulation" }}>Save</button>
+        </div>
+      )}
+      {chartPoints.length > 0 && (
+        <DualLineChart points={chartPoints} lineColor="#5bb85b" />
+      )}
+      {chartPoints.length === 0 && (
+        <div style={{ color: t.textMuted, fontSize: 13, textAlign: "center", padding: "12px 0" }}>
+          Log your first weigh-in above to start tracking
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Muscle Group Breakdown ────────────────────────────────────────────
 const MUSCLE_KEYWORDS = [
   { group: "Chest",      color: "#d55b5b", icon: "💪", keys: ["bench", "chest", "fly", "flye", "pec", "push up", "pushup", "dip"] },
@@ -892,7 +1346,7 @@ function MuscleBreakdown({ workouts }) {
         <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 20, letterSpacing: 1, color: t.textSub }}>MUSCLE GROUPS</div>
         <div style={{ display: "flex", background: t.surfaceHigh, borderRadius: 8, padding: 2, gap: 2 }}>
           {[["week","7D"],["month","30D"],["year","1Y"]].map(([val, label]) => (
-            <button key={val} onClick={() => setRange(val)} style={{ background: range === val ? accent : "transparent", color: range === val ? "#fff" : t.textMuted, border: "none", borderRadius: 6, padding: "5px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}>{label}</button>
+            <button key={val} onClick={() => setRange(val)} style={{ background: range === val ? accent : "transparent", color: range === val ? "#fff" : t.textMuted, border: "none", borderRadius: 6, padding: "9px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", minHeight: 44, touchAction: "manipulation", transition: "all 0.2s" }}>{label}</button>
           ))}
         </div>
       </div>
@@ -917,51 +1371,147 @@ function MuscleBreakdown({ workouts }) {
 }
 
 // ── Big 3 PRs ─────────────────────────────────────────────────────────
-function Big3PRs({ workouts }) {
+const DEFAULT_BIG3 = ["Barbell Bench Press", "Barbell Back Squat", "Conventional Deadlift"];
+
+function slotCfg(name) {
+  const ex = GYM_BIBLE.find(e => e.name === name);
+  const color = ex ? (CAT_COLORS[ex.cat] || accent) : accent;
+  // Build a short 2-letter badge: skip common filler words, take initials
+  const skipWords = new Set(["Barbell","Dumbbell","Cable","Machine","Smith","Seated","Standing","Lying","Romanian","Single","Arm","Close","Wide","High","Low","Over","Under","Parallel","Assisted","Resistance"]);
+  const meaningful = name.split(" ").filter(w => w.length > 1 && !skipWords.has(w));
+  const label = meaningful.length >= 2
+    ? (meaningful[0][0] + meaningful[1][0]).toUpperCase()
+    : name.slice(0, 2).toUpperCase();
+  return { label, color, borderColor: color + "33", bgColor: color + "14" };
+}
+
+function Big3PRs({ workouts, profile, onSave }) {
   const t = useT();
-  const cfg = {
-    "Bench Press": { label: "BP",  color: "#5B9BD5", borderColor: "#1e3a52", bgColor: "rgba(91,155,213,0.08)" },
-    "Squat":       { label: "SQ",  color: "#A8C8E8", borderColor: "#1e2e3a", bgColor: "rgba(168,200,232,0.07)" },
-    "Deadlift":    { label: "DL",  color: "#7aafd4", borderColor: "#1a2e40", bgColor: "rgba(122,175,212,0.07)" },
+  const big3 = (profile?.big3?.length === 3) ? profile.big3 : DEFAULT_BIG3;
+
+  const [editing, setEditing]       = useState(false);
+  const [draft, setDraft]           = useState(big3);
+  const [activeSlot, setActiveSlot] = useState(null);
+  const [slotSearch, setSlotSearch] = useState("");
+
+  // Keep draft in sync if profile changes from outside
+  const startEdit = () => { setDraft(big3); setEditing(true); setActiveSlot(null); setSlotSearch(""); };
+  const cancelEdit = () => { setEditing(false); setActiveSlot(null); setSlotSearch(""); };
+  const saveEdit  = () => { onSave(draft); setEditing(false); setActiveSlot(null); setSlotSearch(""); };
+
+  const openSlot  = (i) => { setActiveSlot(i); setSlotSearch(""); };
+  const pickEx    = (name) => {
+    const next = [...draft]; next[activeSlot] = name; setDraft(next);
+    setActiveSlot(null); setSlotSearch("");
   };
-  const getPR = (name) => {
+
+  const getPR   = (name) => {
     const ws = workouts.flatMap(w => w.exercises.filter(e => e.name === name).flatMap(e => e.sets)).map(s => parseFloat(s.weight)).filter(v => !isNaN(v) && v > 0);
     return ws.length ? Math.max(...ws) : null;
   };
   const getDate = (name) => { const w = workouts.find(w => w.exercises.some(e => e.name === name)); return w ? formatDate(w.date) : null; };
-  const prs = BIG3.map(name => ({ name, pr: getPR(name), date: getDate(name) }));
-  const maxPR = Math.max(...prs.map(p => p.pr || 0));
+  const prs     = big3.map(name => ({ name, pr: getPR(name), date: getDate(name) }));
+  const maxPR   = Math.max(...prs.map(p => p.pr || 0));
+
+  // Slot-search results: filter GYM_BIBLE + any custom logged exercises
+  const allNames = [...new Set([...GYM_BIBLE.map(e => e.name), ...workouts.flatMap(w => w.exercises.map(e => e.name))])];
+  const slotResults = slotSearch.trim()
+    ? allNames.filter(n => n.toLowerCase().includes(slotSearch.toLowerCase())).slice(0, 30)
+    : allNames.slice(0, 30);
+
   return (
     <div style={{ marginBottom: 8 }}>
+      {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
         <Icon name="trophy" size={17} />
-        <span style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 20, letterSpacing: 1.5 }}>BIG 3 PERSONAL RECORDS</span>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {prs.map(({ name, pr, date }) => {
-          const c = cfg[name]; const isTop = pr && pr === maxPR;
-          return (
-            <div key={name} style={{ background: c.bgColor, border: `1px solid ${pr ? c.borderColor : t.border}`, borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, position: "relative", overflow: "hidden" }}>
-              {pr && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: c.color, borderRadius: "14px 0 0 14px" }} />}
-              <div style={{ width: 46, height: 46, borderRadius: 12, background: `${c.color}18`, border: `1px solid ${c.color}40`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: "'Bebas Neue', cursive", fontSize: 15, letterSpacing: 1, color: c.color }}>{c.label}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, color: t.textMuted, marginBottom: 2, textTransform: "uppercase", letterSpacing: 0.5 }}>{name}</div>
-                {pr
-                  ? <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}><span style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 32, letterSpacing: 1, color: c.color, lineHeight: 1 }}>{pr}</span><span style={{ color: t.textMuted, fontSize: 14 }}>lbs</span></div>
-                  : <div style={{ color: t.textMuted, fontSize: 14, marginTop: 2 }}>Not logged yet</div>
-                }
-                {date && <div style={{ fontSize: 11, color: t.textMuted, marginTop: 2 }}>Last: {date}</div>}
-              </div>
-              {pr && (
-                <div style={{ textAlign: "center", flexShrink: 0 }}>
-                  <div style={{ fontSize: 20, marginBottom: 2 }}>👑</div>
-                  <div style={{ background: isTop ? accent : t.surfaceHov, color: isTop ? "#ffffff" : t.textMuted, borderRadius: 6, padding: "3px 8px", fontSize: 11, fontWeight: 700, letterSpacing: 0.5 }}>{isTop ? "TOP PR" : "PR"}</div>
-                </div>
-              )}
+        <span style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 20, letterSpacing: 1.5, flex: 1 }}>MY TOP LIFTS</span>
+        {!editing
+          ? <button onClick={startEdit} style={pillBtn(t)}>Edit</button>
+          : <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={cancelEdit} style={pillBtn(t)}>Cancel</button>
+              <button onClick={saveEdit}   style={pillBtnPrimary()}>Save</button>
             </div>
-          );
-        })}
+        }
       </div>
+
+      {/* Edit mode */}
+      {editing ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {draft.map((name, i) => {
+            const c = slotCfg(name);
+            return (
+              <div key={i}>
+                {/* Slot row */}
+                <div
+                  onClick={() => activeSlot === i ? setActiveSlot(null) : openSlot(i)}
+                  style={{ background: activeSlot === i ? `${accent}11` : t.surface, border: `1px solid ${activeSlot === i ? accent : t.border}`, borderRadius: activeSlot === i ? "12px 12px 0 0" : 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", touchAction: "manipulation", transition: "all 0.15s" }}
+                >
+                  <div style={{ width: 36, height: 36, borderRadius: 9, background: `${c.color}20`, border: `1px solid ${c.color}50`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bebas Neue', cursive", fontSize: 14, letterSpacing: 1, color: c.color, flexShrink: 0 }}>{c.label}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, color: t.textMuted, marginBottom: 1 }}>LIFT {i + 1}</div>
+                    <div style={{ fontSize: 14, color: t.text, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
+                  </div>
+                  <Icon name={activeSlot === i ? "chevron-up" : "chevron-down"} size={14} color={t.textMuted} />
+                </div>
+
+                {/* Inline search + picker for this slot */}
+                {activeSlot === i && (
+                  <div style={{ border: `1px solid ${accent}`, borderTop: "none", borderRadius: "0 0 12px 12px", background: t.surface, overflow: "hidden" }}>
+                    <div style={{ padding: "10px 12px 8px" }}>
+                      <input
+                        autoFocus
+                        value={slotSearch}
+                        onChange={e => setSlotSearch(e.target.value)}
+                        placeholder="Search exercises…"
+                        style={{ width: "100%", background: t.surfaceHigh || t.surface, border: `1px solid ${t.border}`, borderRadius: 8, padding: "8px 12px", fontSize: 14, color: t.text, outline: "none", boxSizing: "border-box" }}
+                      />
+                    </div>
+                    <div style={{ maxHeight: 200, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+                      {slotResults.map(n => {
+                        const sc = slotCfg(n);
+                        return (
+                          <button key={n} onClick={() => pickEx(n)} style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: n === name ? `${accent}15` : "transparent", border: "none", borderBottom: `1px solid ${t.border}`, color: t.text, textAlign: "left", padding: "10px 14px", cursor: "pointer", fontSize: 14, touchAction: "manipulation", minHeight: 44 }}>
+                            <span style={{ width: 7, height: 7, borderRadius: "50%", background: sc.color, flexShrink: 0 }} />
+                            <span style={{ flex: 1 }}>{n}</span>
+                            {n === name && <Icon name="check" size={13} color={accent} />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* Normal PR display */
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {prs.map(({ name, pr, date }) => {
+            const c = slotCfg(name); const isTop = pr && pr === maxPR;
+            return (
+              <div key={name} style={{ background: c.bgColor, border: `1px solid ${pr ? c.borderColor : t.border}`, borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, position: "relative", overflow: "hidden" }}>
+                {pr && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: c.color, borderRadius: "14px 0 0 14px" }} />}
+                <div style={{ width: 46, height: 46, borderRadius: 12, background: `${c.color}18`, border: `1px solid ${c.color}40`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: "'Bebas Neue', cursive", fontSize: 15, letterSpacing: 1, color: c.color }}>{c.label}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, color: t.textMuted, marginBottom: 2, textTransform: "uppercase", letterSpacing: 0.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
+                  {pr
+                    ? <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}><span style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 32, letterSpacing: 1, color: c.color, lineHeight: 1 }}>{pr}</span><span style={{ color: t.textMuted, fontSize: 14 }}>lbs</span></div>
+                    : <div style={{ color: t.textMuted, fontSize: 14, marginTop: 2 }}>Not logged yet</div>
+                  }
+                  {date && <div style={{ fontSize: 11, color: t.textMuted, marginTop: 2 }}>Last: {date}</div>}
+                </div>
+                {pr && (
+                  <div style={{ textAlign: "center", flexShrink: 0 }}>
+                    <div style={{ fontSize: 20, marginBottom: 2 }}>👑</div>
+                    <div style={{ background: isTop ? accent : t.surfaceHov, color: isTop ? "#ffffff" : t.textMuted, borderRadius: 6, padding: "3px 8px", fontSize: 11, fontWeight: 700, letterSpacing: 0.5 }}>{isTop ? "TOP PR" : "PR"}</div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -992,9 +1542,9 @@ function SetRow({ set, index, onChange, onRemove }) {
           style={{
             background: hasRpe ? `${toneColor}18` : "transparent",
             border: `1px solid ${hasRpe ? toneColor + "66" : t.border}`,
-            borderRadius: 8, padding: "6px 9px", fontSize: 11, fontWeight: 700,
+            borderRadius: 8, padding: "10px 12px", fontSize: 12, fontWeight: 700,
             color: hasRpe ? toneColor : t.textMuted, cursor: "pointer",
-            whiteSpace: "nowrap", flexShrink: 0, minHeight: 36, touchAction: "manipulation",
+            whiteSpace: "nowrap", flexShrink: 0, minHeight: 44, touchAction: "manipulation",
             transition: "all 0.15s",
           }}
         >
@@ -1120,11 +1670,11 @@ function ExerciseBlock({ exercise, onChange, onRemove, workouts }) {
                   }}
                   style={{
                     background: cc.icon, color: "#fff", border: "none", borderRadius: 8,
-                    padding: "7px 13px", fontSize: 12, fontWeight: 700, cursor: "pointer", touchAction: "manipulation",
+                    padding: "11px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", touchAction: "manipulation", minHeight: 44,
                   }}
                 >Apply {coach.target.weight} × {coach.target.reps}</button>
                 <button onClick={() => setCoachDismissed(true)}
-                  style={{ background: "transparent", border: `1px solid ${t.border}`, borderRadius: 8, padding: "7px 11px", fontSize: 12, color: t.textMuted, cursor: "pointer", touchAction: "manipulation" }}>
+                  style={{ background: "transparent", border: `1px solid ${t.border}`, borderRadius: 8, padding: "11px 14px", fontSize: 13, color: t.textMuted, cursor: "pointer", touchAction: "manipulation", minHeight: 44 }}>
                   Dismiss
                 </button>
               </div>
@@ -1237,7 +1787,7 @@ function WorkoutHistoryCard({ workout, index, onLabelChange, onDelete, onSaveTem
                   {WORKOUT_LABELS.map(l => {
                     const isActive = activeLabels.includes(l.id);
                     return (
-                      <button key={l.id} onClick={(e) => toggleLabel(e, l.id)} style={{ background: isActive ? l.bg : "transparent", border: `1px solid ${isActive ? l.border : t.border}`, color: isActive ? l.color : t.textMuted, borderRadius: 10, padding: "9px 14px", fontSize: 13, cursor: "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: 5, transition: "all 0.15s", opacity: (!isActive && activeLabels.length >= 3) ? 0.4 : 1, minHeight: 38, touchAction: "manipulation" }}>
+                      <button key={l.id} onClick={(e) => toggleLabel(e, l.id)} style={{ background: isActive ? l.bg : "transparent", border: `1px solid ${isActive ? l.border : t.border}`, color: isActive ? l.color : t.textMuted, borderRadius: 10, padding: "11px 16px", fontSize: 14, cursor: "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: 6, transition: "all 0.15s", opacity: (!isActive && activeLabels.length >= 3) ? 0.4 : 1, minHeight: 44, touchAction: "manipulation" }}>
                         {l.emoji} {l.label}{isActive && <span style={{ fontSize: 10, marginLeft: 1, opacity: 0.7 }}>✕</span>}
                       </button>
                     );
@@ -1423,6 +1973,53 @@ function SecuritySettings() {
 }
 
 // ── Settings Modal ────────────────────────────────────────────────────
+function VerifyEmailRow() {
+  const t = useT();
+  const [sent, setSent] = useState(false);
+  const [err, setErr]   = useState(null);
+  const [busy, setBusy] = useState(false);
+  const user = auth.currentUser;
+  if (!user || user.emailVerified) return null;
+
+  const resend = async () => {
+    setBusy(true); setErr(null);
+    try {
+      await sendEmailVerification(user);
+      setSent(true);
+    } catch (e) {
+      setErr(e.message || "Failed to send. Try again later.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ fontSize: 11, color: t.textMuted, textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 700, marginBottom: 10 }}>Email Verification</div>
+      <div style={{ background: "rgba(255,149,0,0.08)", border: "1px solid rgba(255,149,0,0.3)", borderRadius: 12, padding: "13px 16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: sent ? 10 : 12 }}>
+          <span style={{ fontSize: 16 }}>⚠️</span>
+          <span style={{ fontSize: 13, color: "#ff9500", fontWeight: 600 }}>Email not verified</span>
+        </div>
+        <div style={{ fontSize: 12, color: t.textMuted, marginBottom: 12, lineHeight: 1.5 }}>
+          {user.email} — check your inbox for a verification link.
+        </div>
+        {sent
+          ? <div style={{ fontSize: 12, color: "#5bb85b", fontWeight: 600 }}>✓ Verification email sent — check your inbox</div>
+          : <button
+              onClick={resend}
+              disabled={busy}
+              style={{ background: "rgba(255,149,0,0.15)", border: "1px solid rgba(255,149,0,0.4)", color: "#ff9500", borderRadius: 9, padding: "9px 16px", fontSize: 13, fontWeight: 700, cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1, touchAction: "manipulation" }}
+            >
+              {busy ? "Sending…" : "Resend Verification Email"}
+            </button>
+        }
+        {err && <div style={{ fontSize: 11, color: "#d55b5b", marginTop: 8 }}>{err}</div>}
+      </div>
+    </div>
+  );
+}
+
 function SettingsModal({ authedUser, onClose, toggleTheme }) {
   const t = useT();
   const theme = useContext(ThemeCtx);
@@ -1433,7 +2030,7 @@ function SettingsModal({ authedUser, onClose, toggleTheme }) {
       {/* Backdrop */}
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
       {/* Sheet */}
-      <div onClick={e => e.stopPropagation()} style={{ position: "relative", width: "100%", maxWidth: 420, background: t.surface, borderRadius: "20px 20px 0 0", padding: "0 20px calc(env(safe-area-inset-bottom, 0px) + 24px)", maxHeight: "85vh", overflowY: "auto", boxShadow: "0 -8px 40px rgba(0,0,0,0.4)" }}>
+      <div onClick={e => e.stopPropagation()} style={{ position: "relative", width: "100%", maxWidth: 420, background: t.surface, borderRadius: "20px 20px 0 0", padding: "0 20px calc(env(safe-area-inset-bottom, 0px) + 24px)", maxHeight: "85vh", overflowY: "auto", WebkitOverflowScrolling: "touch", boxShadow: "0 -8px 40px rgba(0,0,0,0.4)" }}>
         {/* Handle */}
         <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 4px" }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border }} />
@@ -1458,6 +2055,8 @@ function SettingsModal({ authedUser, onClose, toggleTheme }) {
             <span style={{ fontSize: 11, color: t.textMuted, fontWeight: 600 }}>Tap to switch</span>
           </button>
         </div>
+        {/* Email verification */}
+        <VerifyEmailRow />
         {/* Security */}
         <div style={{ marginBottom: 8 }}>
           <div style={{ fontSize: 11, color: t.textMuted, textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 700, marginBottom: 10 }}>Account Security</div>
@@ -1905,7 +2504,7 @@ function TemplateManager({ templates, onLoad, onDelete, onRename, onClose }) {
   const [renameVal, setRenameVal] = useState("");
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", flexDirection: "column", justifyContent: "flex-end" }} onClick={onClose}>
-      <div style={{ background: t.surface, borderRadius: "20px 20px 0 0", padding: "20px 20px 36px", maxWidth: 420, width: "100%", margin: "0 auto", boxShadow: "0 -8px 40px rgba(0,0,0,0.5)", maxHeight: "80vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: t.surface, borderRadius: "20px 20px 0 0", padding: "20px 20px 36px", maxWidth: 420, width: "100%", margin: "0 auto", boxShadow: "0 -8px 40px rgba(0,0,0,0.5)", maxHeight: "80vh", overflowY: "auto", WebkitOverflowScrolling: "touch" }} onClick={e => e.stopPropagation()}>
         <div style={{ width: 36, height: 4, background: t.border, borderRadius: 4, margin: "0 auto 18px" }} />
         <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 24, letterSpacing: 1, marginBottom: 18 }}>
           My <span style={{ color: accent }}>Templates</span>
@@ -1930,8 +2529,8 @@ function TemplateManager({ templates, onLoad, onDelete, onRename, onClose }) {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                   <div style={{ fontWeight: 700, fontSize: 15, color: t.text }}>{tmpl.name}</div>
                   <div style={{ display: "flex", gap: 6 }}>
-                    <button onClick={() => { setRenamingId(tmpl.id); setRenameVal(tmpl.name); }} style={{ background: "transparent", border: `1px solid ${t.border}`, borderRadius: 7, padding: "4px 10px", fontSize: 11, color: t.textMuted, cursor: "pointer" }}>Rename</button>
-                    <button onClick={() => onDelete(tmpl.id)} style={{ background: "transparent", border: "1px solid rgba(213,91,91,0.3)", borderRadius: 7, padding: "4px 10px", fontSize: 11, color: "#d55b5b", cursor: "pointer" }}>Delete</button>
+                    <button onClick={() => { setRenamingId(tmpl.id); setRenameVal(tmpl.name); }} style={{ background: "transparent", border: `1px solid ${t.border}`, borderRadius: 8, padding: "9px 14px", fontSize: 13, color: t.textMuted, cursor: "pointer", minHeight: 44, touchAction: "manipulation" }}>Rename</button>
+                    <button onClick={() => onDelete(tmpl.id)} style={{ background: "transparent", border: "1px solid rgba(213,91,91,0.3)", borderRadius: 8, padding: "9px 14px", fontSize: 13, color: "#d55b5b", cursor: "pointer", minHeight: 44, touchAction: "manipulation" }}>Delete</button>
                   </div>
                 </div>
                 <div style={{ fontSize: 12, color: t.textMuted, marginBottom: 10 }}>{tmpl.exercises.length} exercise{tmpl.exercises.length !== 1 ? "s" : ""} · {tmpl.exercises.map(e => e.name).join(", ")}</div>
@@ -1962,7 +2561,7 @@ function OneRMCalculator({ onClose }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", flexDirection: "column", justifyContent: "flex-end" }} onClick={onClose}>
-      <div style={{ background: t.surface, borderRadius: "20px 20px 0 0", padding: "20px 20px 32px", maxWidth: 420, width: "100%", margin: "0 auto", boxShadow: "0 -8px 40px rgba(0,0,0,0.5)", maxHeight: "88vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: t.surface, borderRadius: "20px 20px 0 0", padding: "20px 20px 32px", maxWidth: 420, width: "100%", margin: "0 auto", boxShadow: "0 -8px 40px rgba(0,0,0,0.5)", maxHeight: "88vh", overflowY: "auto", WebkitOverflowScrolling: "touch" }} onClick={e => e.stopPropagation()}>
         <div style={{ width: 36, height: 4, background: t.border, borderRadius: 4, margin: "0 auto 18px" }} />
         <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 24, letterSpacing: 1, marginBottom: 18 }}>
           1RM <span style={{ color: accent }}>Estimator</span>
@@ -2076,7 +2675,7 @@ function PlateCalculator({ onClose }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", flexDirection: "column", justifyContent: "flex-end" }} onClick={onClose}>
-      <div style={{ background: t.surface, borderRadius: "20px 20px 0 0", padding: "20px 20px 32px", maxWidth: 420, width: "100%", margin: "0 auto", boxShadow: "0 -8px 40px rgba(0,0,0,0.5)", maxHeight: "88vh", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+      <div style={{ background: t.surface, borderRadius: "20px 20px 0 0", padding: "20px 20px 32px", maxWidth: 420, width: "100%", margin: "0 auto", boxShadow: "0 -8px 40px rgba(0,0,0,0.5)", maxHeight: "88vh", overflowY: "auto", WebkitOverflowScrolling: "touch" }} onClick={e => e.stopPropagation()}>
         <div style={{ width: 36, height: 4, background: t.border, borderRadius: 4, margin: "0 auto 18px" }} />
         <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 24, letterSpacing: 1, marginBottom: 14 }}>
           Plate <span style={{ color: accent }}>Calculator</span>
@@ -2193,9 +2792,11 @@ export default function App() {
   const prevViewRef = useRef("home");
   const [workout, setWorkout] = useState(null);
   const [exSearch, setExSearch] = useState("");
+  const [exCatFilter, setExCatFilter] = useState("all");
+  const [exEquipFilter, setExEquipFilter] = useState("all");
   const [showExPicker, setShowExPicker] = useState(false);
   const [completedWorkout, setCompletedWorkout] = useState(null);
-  const [theme, setTheme] = useState(() => { try { return localStorage.getItem("gymtrack-theme") || "dark"; } catch { return "dark"; } });
+  const [theme, setTheme] = useState(() => { try { return localStorage.getItem("barbelllabs-theme") || "dark"; } catch { return "dark"; } });
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileDraft, setProfileDraft] = useState({});
   const [helpPage, setHelpPage] = useState(null);
@@ -2225,7 +2826,7 @@ export default function App() {
     touchX.current = null;
   };
   const saveProfile = (updates) => save({ ...data, profile: { ...profile, ...updates } });
-  const toggleTheme = () => { const n = theme === "dark" ? "light" : "dark"; setTheme(n); try { localStorage.setItem("gymtrack-theme", n); } catch {} };
+  const toggleTheme = () => { const n = theme === "dark" ? "light" : "dark"; setTheme(n); try { localStorage.setItem("barbelllabs-theme", n); } catch {} };
 
   useEffect(() => {
     const link = document.createElement("link");
@@ -2276,8 +2877,18 @@ export default function App() {
 
   if (!firebaseUser) return <LandingPage onNewUser={() => setIsNewUser(true)} />;
 
-  const allExercises = [...new Set([...DEFAULT_EXERCISES, ...data.workouts.flatMap(w => w.exercises.map(e => e.name))])].sort();
-  const filtered = allExercises.filter(e => e.toLowerCase().includes(exSearch.toLowerCase()));
+  const gymBibleNames = new Set(GYM_BIBLE.map(e => e.name));
+  const customExNames = [...new Set(data.workouts.flatMap(w => w.exercises.map(e => e.name)).filter(n => !gymBibleNames.has(n)))];
+  const allPickerExercises = [
+    ...GYM_BIBLE,
+    ...customExNames.map(name => ({ name, cat: "custom", equip: "other", level: "beginner", muscles: "" })),
+  ];
+  const filtered = allPickerExercises.filter(ex => {
+    if (exCatFilter !== "all" && ex.cat !== exCatFilter) return false;
+    if (exEquipFilter !== "all" && ex.equip !== exEquipFilter) return false;
+    if (exSearch && !ex.name.toLowerCase().includes(exSearch.toLowerCase())) return false;
+    return true;
+  });
 
   const progressData = (exName) =>
     data.workouts.filter(w => w.exercises.some(e => e.name === exName))
@@ -2297,7 +2908,7 @@ export default function App() {
       const cur = w || { date: todayISO(), startTime: Date.now(), exercises: [] };
       return { ...cur, exercises: [...cur.exercises, { name, sets: [{ weight: "", reps: "" }] }] };
     });
-    setShowExPicker(false); setExSearch("");
+    setShowExPicker(false); setExSearch(""); setExCatFilter("all"); setExEquipFilter("all");
   };
   const finishWorkout = () => {
     const cleaned = { ...workout, duration: Math.round((Date.now() - workout.startTime) / 60000), exercises: workout.exercises.map(e => ({ ...e, sets: e.sets.filter(s => s.weight !== "" || s.reps !== "") })).filter(e => e.sets.length > 0) };
@@ -2387,9 +2998,6 @@ export default function App() {
                 {streak > 0 && <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,149,0,0.12)", border: "1px solid rgba(255,149,0,0.3)", borderRadius: 20, padding: "4px 12px", fontSize: 12, color: "#ff9500", fontWeight: 700, marginTop: 8 }}>🔥 {streak} day streak</div>}
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <button onClick={() => setShowSettings(true)} style={{ background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 10, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: t.textMuted }}>
-                  <Icon name="gear" size={16} />
-                </button>
                 <HelpBtn page="home" onOpen={() => setHelpPage("home")} />
               </div>
             </div>
@@ -2458,8 +3066,8 @@ export default function App() {
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               {workout && <div style={{ background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 20, padding: "5px 14px", fontSize: 12, fontWeight: 600, color: t.textMuted, letterSpacing: 0.3 }}>{Math.round((Date.now() - workout.startTime) / 60000)} min</div>}
-              <button onClick={() => setShow1RM(true)} style={{ background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 20, padding: "8px 14px", fontSize: 12, fontWeight: 600, color: t.textSub, cursor: "pointer", letterSpacing: 0.3, minHeight: 36, touchAction: "manipulation" }}>1RM</button>
-              <button onClick={() => setShowPlateCalc(true)} style={{ background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 20, padding: "8px 16px", fontSize: 12, fontWeight: 600, color: t.textSub, cursor: "pointer", letterSpacing: 0.3, minHeight: 36, touchAction: "manipulation" }}>Plates</button>
+              <button onClick={() => setShow1RM(true)} style={{ background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 20, padding: "10px 16px", fontSize: 13, fontWeight: 600, color: t.textSub, cursor: "pointer", letterSpacing: 0.3, minHeight: 44, touchAction: "manipulation" }}>1RM</button>
+              <button onClick={() => setShowPlateCalc(true)} style={{ background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 20, padding: "10px 18px", fontSize: 13, fontWeight: 600, color: t.textSub, cursor: "pointer", letterSpacing: 0.3, minHeight: 44, touchAction: "manipulation" }}>Plates</button>
               <HelpBtn page="log" onOpen={() => setHelpPage("log")} />
             </div>
           </div>
@@ -2515,13 +3123,51 @@ export default function App() {
 
           {showExPicker ? (
             <div style={S.card()}>
-              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                <input value={exSearch} onChange={e => setExSearch(e.target.value)} placeholder="Search or add exercise…" autoFocus style={{ ...S.inputStyle(), flex: 1, width: "auto" }} />
-                <button onClick={() => setShowExPicker(false)} style={S.iconBtn()}><Icon name="x" size={16} /></button>
+              {/* Search row */}
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <input value={exSearch} onChange={e => setExSearch(e.target.value)} placeholder="Search exercises…" autoFocus style={{ ...S.inputStyle(), flex: 1, width: "auto" }} />
+                <button onClick={() => { setShowExPicker(false); setExSearch(""); setExCatFilter("all"); setExEquipFilter("all"); }} style={S.iconBtn()}><Icon name="x" size={16} /></button>
               </div>
-              <div style={{ maxHeight: 220, overflowY: "auto" }}>
-                {filtered.map(name => <button key={name} onClick={() => { if (!workout) setWorkout({ date: todayISO(), startTime: Date.now(), exercises: [] }); addExercise(name); }} style={{ display: "block", width: "100%", background: "transparent", border: "none", color: t.textSub, textAlign: "left", padding: "14px 10px", cursor: "pointer", fontSize: 15, borderBottom: `1px solid ${t.border}`, minHeight: 48, touchAction: "manipulation" }}>{name}</button>)}
-                {exSearch && !filtered.find(e => e.toLowerCase() === exSearch.toLowerCase()) && <button onClick={() => { if (!workout) setWorkout({ date: todayISO(), startTime: Date.now(), exercises: [] }); addExercise(exSearch); }} style={{ display: "block", width: "100%", background: "transparent", border: "none", color: accent, textAlign: "left", padding: "14px 10px", cursor: "pointer", fontSize: 15, minHeight: 48, fontWeight: 600, touchAction: "manipulation" }}>+ Add "{exSearch}"</button>}
+              {/* Category filter chips */}
+              <div style={{ position: "relative", marginBottom: 8 }}>
+                <div style={{ display: "flex", gap: 8, overflowX: "auto", WebkitOverflowScrolling: "touch", touchAction: "pan-x", paddingBottom: 4, paddingRight: 28, scrollbarWidth: "none", msOverflowStyle: "none" }}>
+                  {EX_CATS.map(c => {
+                    const active = exCatFilter === c.id;
+                    const darkText = active && c.color && ["#ffe66d","#a8e6cf","#c3a6ff","#ffd93d"].includes(c.color);
+                    return (
+                      <button key={c.id} onClick={() => setExCatFilter(c.id)} style={{ flexShrink: 0, padding: "10px 16px", borderRadius: 22, border: `1.5px solid ${active ? (c.color || accent) : t.border}`, background: active ? (c.color || accent) : t.surface, color: active ? (darkText ? "#111" : "#fff") : t.textSub, fontSize: 14, fontWeight: 600, cursor: "pointer", touchAction: "pan-y", whiteSpace: "nowrap", minHeight: 44, transition: "all 0.15s", userSelect: "none" }}>{c.label}</button>
+                    );
+                  })}
+                </div>
+                <div style={{ position: "absolute", right: 0, top: 0, bottom: 4, width: 32, background: `linear-gradient(to right, transparent, ${t.cardBg || t.surface})`, pointerEvents: "none" }} />
+              </div>
+              {/* Equipment filter chips */}
+              <div style={{ position: "relative", marginBottom: 8 }}>
+                <div style={{ display: "flex", gap: 8, overflowX: "auto", WebkitOverflowScrolling: "touch", touchAction: "pan-x", paddingBottom: 4, paddingRight: 28, scrollbarWidth: "none", msOverflowStyle: "none" }}>
+                  {EX_EQUIPS.map(eq => {
+                    const active = exEquipFilter === eq.id;
+                    return (
+                      <button key={eq.id} onClick={() => setExEquipFilter(eq.id)} style={{ flexShrink: 0, padding: "9px 15px", borderRadius: 22, border: `1.5px solid ${active ? accent : t.border}`, background: active ? `${accent}20` : t.surface, color: active ? accent : t.textMuted, fontSize: 13, fontWeight: 600, cursor: "pointer", touchAction: "pan-y", whiteSpace: "nowrap", minHeight: 44, transition: "all 0.15s", userSelect: "none" }}>{eq.label}</button>
+                    );
+                  })}
+                </div>
+                <div style={{ position: "absolute", right: 0, top: 0, bottom: 4, width: 32, background: `linear-gradient(to right, transparent, ${t.cardBg || t.surface})`, pointerEvents: "none" }} />
+              </div>
+              {/* Results list */}
+              <div style={{ maxHeight: 240, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+                {filtered.map(ex => (
+                  <button key={ex.name} onClick={() => { if (!workout) setWorkout({ date: todayISO(), startTime: Date.now(), exercises: [] }); addExercise(ex.name); }} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", background: "transparent", border: "none", color: t.text, textAlign: "left", padding: "10px 8px", cursor: "pointer", fontSize: 14, borderBottom: `1px solid ${t.border}`, minHeight: 44, touchAction: "manipulation" }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: CAT_COLORS[ex.cat] || "#888", flexShrink: 0 }} />
+                    <span style={{ flex: 1, lineHeight: 1.3 }}>{ex.name}</span>
+                    {ex.cat !== "custom" && <span style={{ fontSize: 10, color: t.textMuted, background: t.cardBg || t.surface2 || "rgba(255,255,255,0.06)", padding: "2px 6px", borderRadius: 4, flexShrink: 0, textTransform: "capitalize" }}>{ex.equip}</span>}
+                  </button>
+                ))}
+                {filtered.length === 0 && !exSearch && <div style={{ padding: "20px 8px", color: t.textMuted, fontSize: 13, textAlign: "center" }}>No exercises match these filters.</div>}
+                {exSearch && !filtered.find(ex => ex.name.toLowerCase() === exSearch.toLowerCase()) && (
+                  <button onClick={() => { if (!workout) setWorkout({ date: todayISO(), startTime: Date.now(), exercises: [] }); addExercise(exSearch); }} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", background: "transparent", border: "none", color: accent, textAlign: "left", padding: "12px 8px", cursor: "pointer", fontSize: 14, fontWeight: 600, minHeight: 44, touchAction: "manipulation" }}>
+                    <Icon name="plus" size={14} /> Add "{exSearch}"
+                  </button>
+                )}
               </div>
             </div>
           ) : (
@@ -2632,7 +3278,7 @@ export default function App() {
             <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 32, letterSpacing: 2, lineHeight: 1 }}>YOUR <span style={{ color: accent }}>PROGRESS</span></div>
             <HelpBtn page="progress" onOpen={() => setHelpPage("progress")} />
           </div>
-          <Big3PRs workouts={data.workouts} />
+          <Big3PRs workouts={data.workouts} profile={profile} onSave={(big3) => saveProfile({ big3 })} />
           {data.workouts.length > 0 && <MuscleBreakdown workouts={data.workouts} />}
           <div style={{ borderTop: `1px solid ${t.border}`, margin: "22px 0 18px" }} />
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
@@ -2692,7 +3338,7 @@ export default function App() {
                     .flatMap(w => w.exercises.filter(e => e.name === name).flatMap(e => e.sets))
                     .reduce((best, s) => { const v = epley1RM(parseFloat(s.weight) || 0, parseInt(s.reps) || 0); return (v && v > best) ? v : best; }, 0);
                   return (
-                    <div key={name} id={`exc-${name.replace(/\s+/g, "-")}`} style={{ scrollMarginTop: 16, ...S.card(), border: `1px solid ${BIG3.includes(name) ? lc + "44" : t.border}` }}>
+                    <div key={name} id={`exc-${name.replace(/\s+/g, "-")}`} style={{ scrollMarginTop: 16, ...S.card(), border: `1px solid ${(profile.big3 || DEFAULT_BIG3).includes(name) ? lc + "44" : t.border}` }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
                         <div><div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 18, letterSpacing: 1, color: lc, lineHeight: 1 }}>{name}</div><div style={{ fontSize: 11, color: t.textMuted, marginTop: 3 }}>{pts.length} session{pts.length !== 1 ? "s" : ""}</div></div>
                         <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -2754,7 +3400,8 @@ export default function App() {
                 )}
               </div>
               <div style={{ display: "flex", gap: 7, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
-                {!isEditing && <button onClick={startEdit} style={{ background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 12, color: t.textSub, padding: "10px 16px", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontWeight: 600, minHeight: 44 }}><Icon name="edit2" size={14} /> Edit</button>}
+                {!isEditing && <button onClick={startEdit} style={pillBtn(t)}>Edit</button>}
+                {!isEditing && <button onClick={() => setShowSettings(true)} style={{ ...pillBtn(t), padding: "5px 10px 5px 10px" }}><Icon name="gear" size={14} /> Settings</button>}
                 <HelpBtn page="profile" onOpen={() => setHelpPage("profile")} />
               </div>
             </div>
@@ -2857,11 +3504,21 @@ export default function App() {
                     ].map(s => <div key={s.label}><div style={{ fontSize: 11, color: t.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 3 }}>{s.label}</div><div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 26, color: accent, lineHeight: 1 }}>{s.val}</div></div>)}
                   </div>
                 </div>
+                {/* Bodyweight */}
+                <BodyweightWidget
+                  bodyweight={data.bodyweight || []}
+                  onAdd={w => {
+                    const entry = { date: todayISO(), weight: w };
+                    const existing = (data.bodyweight || []).filter(e => e.date !== todayISO());
+                    save({ ...data, bodyweight: [...existing, entry] });
+                  }}
+                />
                 {/* Version + Manual PDF Download */}
                 <div style={{ ...S.card(), textAlign: "center" }}>
                   <a
-                    href="/repset-user-manual.pdf"
-                    download={`repset-user-manual-v${APP_VERSION}-build-${BUILD_DATE}.pdf`}
+                    href="/user-manual.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     style={{
                       display: "inline-flex", alignItems: "center", gap: 8,
                       background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#ffffff", border: "none",
@@ -2871,7 +3528,7 @@ export default function App() {
                       textDecoration: "none", margin: "0 auto 16px",
                     }}
                   >
-                    <Icon name="download" size={16} /> Download User Manual PDF
+                    <Icon name="download" size={16} /> View User Manual
                   </a>
                   <div style={{ fontSize: 11, color: t.textMuted, lineHeight: 1.9 }}>
                     <div>Version <span style={{ color: accent, fontWeight: 700 }}>{APP_VERSION}</span></div>

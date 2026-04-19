@@ -1,15 +1,15 @@
 const BASE = process.env.REACT_APP_API_URL || "http://localhost:3001";
 
 function getToken() {
-  try { return localStorage.getItem("gymtrack-token"); } catch { return null; }
+  try { return localStorage.getItem("barbelllabs-token"); } catch { return null; }
 }
 
 function setToken(t) {
-  try { localStorage.setItem("gymtrack-token", t); } catch {}
+  try { localStorage.setItem("barbelllabs-token", t); } catch {}
 }
 
 function clearToken() {
-  try { localStorage.removeItem("gymtrack-token"); } catch {}
+  try { localStorage.removeItem("barbelllabs-token"); } catch {}
 }
 
 async function request(method, path, body) {
@@ -25,7 +25,7 @@ async function request(method, path, body) {
 
   if (res.status === 401) {
     clearToken();
-    window.dispatchEvent(new Event("gymtrack-logout"));
+    window.dispatchEvent(new Event("barbelllabs-logout"));
     throw new Error("Session expired");
   }
 

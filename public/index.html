@@ -11,6 +11,38 @@
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <title>Barbell Labs</title>
+  <style>
+    /* iOS momentum scrolling + touch polish for the whole app */
+    html {
+      -webkit-overflow-scrolling: touch;
+      height: 100%;
+    }
+    body {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+      height: 100%;
+    }
+    #root {
+      -webkit-overflow-scrolling: touch;
+      height: 100%;
+    }
+    /* Remove tap flash on all interactive elements */
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* Smooth scroll everywhere */
+    * {
+      scroll-behavior: smooth;
+    }
+    /* Hide scrollbars on mobile but keep functionality */
+    ::-webkit-scrollbar {
+      display: none;
+    }
+    * {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+  </style>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

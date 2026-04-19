@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Barbell Labs — User Manual</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:        #0d0d0d;
+    --surface:   #141414;
+    --surface2:  #1a1a1a;
+    --surface3:  #222222;
+    --border:    #2a2a2a;
+    --accent:    #5B9BD5;
+    --accent2:   #4A8BC4;
+    --text:      #f0f0f0;
+    --sub:       #c8c8c8;
+    --muted:     #7a7a7a;
+    --glow:      rgba(91,155,213,0.18);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 400;
+    line-height: 1.7;
+    font-size: 15px;
+  }
+
+  /* ── PRINT ── */
+  @media print {
+    body { background: #fff; color: #111; font-size: 13px; }
+    :root {
+      --bg: #fff; --surface: #f5f5f5; --surface2: #ebebeb;
+      --surface3: #e0e0e0; --border: #ccc; --text: #111;
+      --sub: #333; --muted: #666; --accent: #2b6cb0; --accent2: #1a5498;
+    }
+    .no-print { display: none !important; }
+    .page-break { page-break-before: always; }
+    a { color: var(--accent); }
+    .cover { min-height: auto; padding: 60px 40px; }
+  }
+
+  /* ── LAYOUT ── */
+  .cover {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 80px 40px;
+    background: radial-gradient(ellipse at 50% 30%, rgba(91,155,213,0.12) 0%, transparent 70%),
+                linear-gradient(180deg, #0d0d0d 0%, #0a0a12 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cover::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      90deg, transparent, transparent 60px,
+      rgba(91,155,213,0.03) 60px, rgba(91,155,213,0.03) 61px
+    ),
+    repeating-linear-gradient(
+      0deg, transparent, transparent 60px,
+      rgba(91,155,213,0.03) 60px, rgba(91,155,213,0.03) 61px
+    );
+    pointer-events: none;
+  }
+
+  .cover-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(64px, 14vw, 120px);
+    letter-spacing: 4px;
+    line-height: 0.9;
+    margin-bottom: 24px;
+  }
+  .cover-logo span { color: var(--accent); }
+
+  .cover-tag {
+    font-size: 11px;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 32px;
+    border: 1px solid rgba(91,155,213,0.3);
+    padding: 6px 20px;
+    border-radius: 20px;
+  }
+
+  .cover-subtitle {
+    font-size: 18px;
+    color: var(--sub);
+    max-width: 480px;
+    margin: 0 auto 48px;
+    font-weight: 300;
+  }
+
+  .cover-meta {
+    display: flex;
+    gap: 32px;
+    justify-content: center;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+  .cover-meta span { text-transform: uppercase; }
+  .cover-meta strong { color: var(--sub); font-weight: 600; }
+
+  .print-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 13px 28px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    margin-bottom: 48px;
+    text-decoration: none;
+    box-shadow: 0 4px 24px var(--glow);
+  }
+
+  /* ── TOC ── */
+  .toc {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 80px 40px;
+  }
+
+  .toc h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    letter-spacing: 2px;
+    margin-bottom: 32px;
+    color: var(--text);
+  }
+  .toc h2 span { color: var(--accent); }
+
+  .toc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .toc-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    text-decoration: none;
+    color: var(--sub);
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .toc-item:hover { border-color: var(--accent); color: var(--text); }
+  .toc-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    color: var(--accent);
+    min-width: 24px;
+    line-height: 1;
+  }
+
+  /* ── CONTENT ── */
+  .content {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 40px 100px;
+  }
+
+  .section {
+    margin-bottom: 72px;
+    scroll-margin-top: 24px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 48px;
+    color: var(--accent);
+    line-height: 1;
+    opacity: 0.4;
+    min-width: 48px;
+  }
+
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    letter-spacing: 1.5px;
+    line-height: 1;
+  }
+
+  .section-icon {
+    font-size: 28px;
+  }
+
+  h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 1px;
+    color: var(--accent);
+    margin: 28px 0 10px;
+  }
+
+  p { color: var(--sub); margin-bottom: 14px; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 22px;
+    margin-bottom: 14px;
+  }
+
+  .card-title {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card p { margin: 0; font-size: 14px; }
+
+  /* ── STEPS ── */
+  .steps { counter-reset: step; display: flex; flex-direction: column; gap: 12px; }
+
+  .step {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    position: relative;
+  }
+
+  .step::before {
+    counter-increment: step;
+    content: counter(step);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    color: var(--accent);
+    min-width: 28px;
+    line-height: 1.2;
+  }
+
+  .step-body { flex: 1; }
+  .step-body strong { display: block; font-size: 15px; color: var(--text); margin-bottom: 4px; }
+  .step-body span { font-size: 13px; color: var(--muted); }
+
+  /* ── TIPS ── */
+  .tip {
+    background: rgba(91,155,213,0.08);
+    border: 1px solid rgba(91,155,213,0.25);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    padding: 14px 18px;
+    margin: 16px 0;
+    font-size: 14px;
+    color: var(--sub);
+  }
+  .tip strong { color: var(--accent); display: block; margin-bottom: 4px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
+
+  /* ── TABLE ── */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th {
+    background: var(--surface2);
+    color: var(--accent);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    letter-spacing: 1px;
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--sub); }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: var(--surface); }
+
+  /* ── BADGE ── */
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .badge-blue { background: rgba(91,155,213,0.15); color: var(--accent); }
+  .badge-green { background: rgba(91,184,91,0.15); color: #5bb85b; }
+  .badge-orange { background: rgba(255,149,0,0.15); color: #ff9500; }
+  .badge-red { background: rgba(213,91,91,0.15); color: #d55b5b; }
+
+  /* ── FEATURE GRID ── */
+  .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0; }
+  .feature-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .feature-icon { font-size: 20px; flex-shrink: 0; line-height: 1.2; }
+  .feature-text strong { display: block; font-size: 13px; color: var(--text); margin-bottom: 2px; }
+  .feature-text span { font-size: 12px; color: var(--muted); }
+
+  /* ── DIVIDER ── */
+  .divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--border), transparent);
+    margin: 48px 0;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 40px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 0.5px;
+  }
+  footer strong { color: var(--accent); }
+
+  @media (max-width: 600px) {
+    .toc-grid { grid-template-columns: 1fr; }
+    .feature-grid { grid-template-columns: 1fr; }
+    .toc, .content { padding-left: 20px; padding-right: 20px; }
+    .cover { padding: 60px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── COVER ──────────────────────────────────────────────── -->
+<div class="cover">
+  <div class="cover-tag">Official User Manual</div>
+  <div class="cover-logo">BARBELL<span>LABS</span></div>
+  <p class="cover-subtitle">Everything you need to log smarter, train harder, and track every PR.</p>
+  <button class="print-btn no-print" id="pdfBtn" onclick="downloadPDF()">
+    ⬇ Save as PDF
+  </button>
+  <div class="cover-meta">
+    <span>Version <strong id="ver">2.3.5</strong></span>
+    <span>Build <strong>2026-04-18</strong></span>
+    <span>Platform <strong>iOS · Android · Web</strong></span>
+    <span><strong>barbelllabs.ca</strong></span>
+  </div>
+</div>
+
+<!-- ── TABLE OF CONTENTS ──────────────────────────────────── -->
+<div class="toc">
+  <h2>TABLE OF <span>CONTENTS</span></h2>
+  <div class="toc-grid">
+    <a href="#s1" class="toc-item"><span class="toc-num">01</span> Getting Started</a>
+    <a href="#s2" class="toc-item"><span class="toc-num">02</span> Logging a Workout</a>
+    <a href="#s3" class="toc-item"><span class="toc-num">03</span> Exercise Library</a>
+    <a href="#s4" class="toc-item"><span class="toc-num">04</span> AI Coach</a>
+    <a href="#s5" class="toc-item"><span class="toc-num">05</span> Rest Timer</a>
+    <a href="#s6" class="toc-item"><span class="toc-num">06</span> RPE &amp; RIR Tracking</a>
+    <a href="#s7" class="toc-item"><span class="toc-num">07</span> Progress &amp; Charts</a>
+    <a href="#s8" class="toc-item"><span class="toc-num">08</span> My Top Lifts</a>
+    <a href="#s9" class="toc-item"><span class="toc-num">09</span> 1RM Estimator</a>
+    <a href="#s10" class="toc-item"><span class="toc-num">10</span> Plate Calculator</a>
+    <a href="#s11" class="toc-item"><span class="toc-num">11</span> Workout Templates</a>
+    <a href="#s12" class="toc-item"><span class="toc-num">12</span> Muscle Breakdown</a>
+    <a href="#s13" class="toc-item"><span class="toc-num">13</span> Workout History</a>
+    <a href="#s14" class="toc-item"><span class="toc-num">14</span> Body Weight Tracking</a>
+    <a href="#s15" class="toc-item"><span class="toc-num">15</span> Streak Tracking</a>
+    <a href="#s16" class="toc-item"><span class="toc-num">16</span> Profile &amp; Settings</a>
+    <a href="#s17" class="toc-item"><span class="toc-num">17</span> Cloud Sync &amp; Export</a>
+    <a href="#s18" class="toc-item"><span class="toc-num">18</span> Account &amp; Security</a>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ── CONTENT ──────────────────────────────────────────────── -->
+<div class="content">
+
+  <!-- 01 -->
+  <div class="section" id="s1">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <span class="section-icon">🚀</span>
+      <span class="section-title">Getting Started</span>
+    </div>
+    <p>Barbell Labs is a workout tracker built for everyone who trains — gym, home, garage, or anywhere you break a sweat. Getting started takes less than 60 seconds.</p>
+
+    <h3>Creating Your Account</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-body">
+          <strong>Open the app and tap "Create Account"</strong>
+          <span>Enter a username, your email address, and a password (min. 8 characters, 1 uppercase, 1 lowercase, 1 number).</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-body">
+          <strong>Verify your email</strong>
+          <span>A verification link is sent to your inbox. Tap it to confirm your account. Check spam if you don't see it.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-body">
+          <strong>Sign in and set up your profile</strong>
+          <span>Go to the Profile tab → tap Edit to add your name, age, weight, height, city, and training goal.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-body">
+          <strong>Start logging</strong>
+          <span>Tap the Log tab, hit "Add Exercise", pick from the 224-exercise library, and record your first set.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip">
+      <strong>💡 Tip</strong>
+      You can also sign in with Google for one-tap account creation — no password required.
+    </div>
+
+    <h3>Navigation</h3>
+    <table>
+      <tr><th>Tab</th><th>What it does</th></tr>
+      <tr><td>🏠 Home</td><td>Overview — greeting, streak, quick stats, recent sessions, quick-log button</td></tr>
+      <tr><td>📋 Log</td><td>Active workout logger — add exercises, record sets, use the rest timer</td></tr>
+      <tr><td>📖 History</td><td>All past workouts — view, search, expand, export to CSV</td></tr>
+      <tr><td>📈 Progress</td><td>Charts, PR tracking, muscle breakdown, exercise progression graphs</td></tr>
+      <tr><td>👤 Profile</td><td>Personal info, goals, lifetime stats, settings, account security</td></tr>
+    </table>
+  </div>
+
+  <!-- 02 -->
+  <div class="section page-break" id="s2">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <span class="section-icon">📋</span>
+      <span class="section-title">Logging a Workout</span>
+    </div>
+    <p>The Log tab is where you record every set, rep, and weight. Everything you log today becomes the coaching and charts you see tomorrow.</p>
+
+    <h3>Starting a Workout</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-body">
+          <strong>Tap the Log tab</strong>
+          <span>Or press "Start Workout" on the Home tab to jump straight into logging.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-body">
+          <strong>Tap "Add Exercise"</strong>
+          <span>Opens the exercise picker. Search by name, or filter by muscle group and equipment type.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-body">
+          <strong>Log your sets</strong>
+          <span>Enter weight and reps for each set. Tap "+ Add Set" to add more. Tap the trash icon to remove a set.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-body">
+          <strong>Tap "Finish Workout" when done</strong>
+          <span>The app saves your session, calculates duration, updates your streak, and shows your post-workout summary.</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>Set Fields</h3>
+    <table>
+      <tr><th>Field</th><th>Description</th></tr>
+      <tr><td><strong>Weight</strong></td><td>The load used. Enter 0 or leave blank for bodyweight exercises.</td></tr>
+      <tr><td><strong>Reps</strong></td><td>The number of reps completed in that set.</td></tr>
+      <tr><td><strong>RPE</strong></td><td>Rate of Perceived Exertion (1–10). How hard the set felt. Tap to toggle.</td></tr>
+      <tr><td><strong>RIR</strong></td><td>Reps in Reserve. How many more reps you had left. Tap to toggle.</td></tr>
+      <tr><td><strong>Notes</strong></td><td>Freeform text for any set — form cues, how you felt, variations used.</td></tr>
+    </table>
+
+    <h3>Workout Labels</h3>
+    <p>Tag each workout with up to 3 labels (Legs, Push, Pull, Upper Body, Lower Body, Shoulders, Arms, Abs, Glutes). Labels appear in History to help you spot patterns.</p>
+
+    <div class="tip">
+      <strong>⚡ Quick Log</strong>
+      On the Home tab, tap "Quick Log Last Session" to instantly reload your most recent workout as a starting point. Edit any sets you want to change, then finish.
+    </div>
+  </div>
+
+  <!-- 03 -->
+  <div class="section page-break" id="s3">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <span class="section-icon">📚</span>
+      <span class="section-title">Exercise Library</span>
+    </div>
+    <p>Barbell Labs includes a complete library of <strong>224 exercises</strong> across 8 muscle groups and 6 equipment types — the full Gym Bible, built in.</p>
+
+    <h3>Filtering Exercises</h3>
+    <p>When you open the exercise picker, you'll see two rows of filter chips above the results list.</p>
+
+    <div class="card">
+      <div class="card-title">💪 Muscle Group (swipe left/right)</div>
+      <p>All · Chest · Back · Shoulders · Arms · Legs · Core · Cardio · Full Body</p>
+    </div>
+    <div class="card">
+      <div class="card-title">🏋️ Equipment (swipe left/right)</div>
+      <p>All Equip · Barbell · Dumbbell · Machine · Cable · Bodyweight · Other</p>
+    </div>
+
+    <p>Use the search bar to find any exercise by name. If an exercise isn't in the library, type the name and tap <strong>+ Add "[name]"</strong> to create a custom entry.</p>
+
+    <h3>Muscle Groups</h3>
+    <div class="feature-grid">
+      <div class="feature-item"><span class="feature-icon">🔴</span><div class="feature-text"><strong>Chest</strong><span>27 exercises</span></div></div>
+      <div class="feature-item"><span class="feature-icon">🟢</span><div class="feature-text"><strong>Back</strong><span>30 exercises</span></div></div>
+      <div class="feature-item"><span class="feature-icon">🟡</span><div class="feature-text"><strong>Shoulders</strong><span>21 exercises</span></div></div>
+      <div class="feature-item"><span class="feature-icon">🩵</span><div class="feature-text"><strong>Arms</strong><span>27 exercises</span></div></div>
+      <div class="feature-item"><span class="feature-icon">🟣</span><div class="feature-text"><strong>Legs</strong><span>37 exercises</span></div></div>
+      <div class="feature-item"><span class="feature-icon">🟠</span><div class="feature-text"><strong>Core</strong><span>28 exercises</span></div></div>
+      <div class="feature-item"><span class="feature-icon">⚡</span><div class="feature-text"><strong>Cardio</strong><span>19 exercises</span></div></div>
+      <div class="feature-item"><span class="feature-icon">🌐</span><div class="feature-text"><strong>Full Body</strong><span>19 exercises</span></div></div>
+    </div>
+  </div>
+
+  <!-- 04 -->
+  <div class="section page-break" id="s4">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <span class="section-icon">🤖</span>
+      <span class="section-title">AI Coach</span>
+    </div>
+    <p>After every set, Barbell Labs analyses your entire history for that exercise and shows you a personalised recommendation — exactly what weight and reps to aim for next.</p>
+
+    <h3>How It Works</h3>
+    <div class="card">
+      <div class="card-title">📈 Progressive Overload</div>
+      <p>If you've been consistent and RPE was moderate, the coach nudges up weight or reps to drive adaptation.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">🔄 Plateau Detection</div>
+      <p>Stalled at the same weight for 3+ sessions? The coach tells you it's time to break through — or suggests a deload.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">🩹 Recovery Mode</div>
+      <p>Coming back after time off? The coach eases you back in with a reduced target to protect against injury.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">💪 RIR & RPE Aware</div>
+      <p>Logged high RIR (lots in the tank)? The coach pushes you harder. Logged RPE 9–10? It may suggest backing off slightly.</p>
+    </div>
+
+    <div class="tip">
+      <strong>💡 Tip</strong>
+      The more sessions you log, the smarter the coach becomes. After 3–5 sessions on an exercise you'll start seeing highly accurate recommendations.
+    </div>
+
+    <h3>Using Suggestions</h3>
+    <p>The AI recommendation appears as a banner above the set rows. Tap <strong>Apply</strong> to pre-fill the weight and reps into your next set, or <strong>Dismiss</strong> to ignore it for this session.</p>
+  </div>
+
+  <!-- 05 -->
+  <div class="section" id="s5">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <span class="section-icon">⏱</span>
+      <span class="section-title">Rest Timer</span>
+    </div>
+    <p>The built-in rest timer sits inside every exercise block. It keeps your rest periods consistent and signals you when it's time to go again.</p>
+
+    <h3>Using the Timer</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-body">
+          <strong>Choose a preset</strong>
+          <span>Tap 30s, 1m, 2m, 3m, 5m — or tap Custom to enter any minutes:seconds combination.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-body">
+          <strong>Tap Start</strong>
+          <span>The timer counts down. You'll feel a haptic vibration when it hits zero.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-body">
+          <strong>Resume or Reset</strong>
+          <span>Tap Pause to stop mid-rest. Tap Reset to cancel and start fresh.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip">
+      <strong>🔔 Haptic Feedback</strong>
+      When the timer reaches zero, your phone vibrates to alert you even if your screen is off or you're mid-conversation.
+    </div>
+  </div>
+
+  <!-- 06 -->
+  <div class="section" id="s6">
+    <div class="section-header">
+      <span class="section-num">06</span>
+      <span class="section-icon">🎯</span>
+      <span class="section-title">RPE &amp; RIR Tracking</span>
+    </div>
+    <p>Track effort, not just weight. RPE and RIR give you and the AI Coach the full picture of how hard each set really was.</p>
+
+    <table>
+      <tr><th>Metric</th><th>Scale</th><th>What it means</th></tr>
+      <tr><td><strong>RPE</strong><br/><span class="badge badge-blue">Rate of Perceived Exertion</span></td><td>1–10</td><td>How hard the set felt. 10 = absolute max effort, no reps left. 7 = moderately hard, a few left.</td></tr>
+      <tr><td><strong>RIR</strong><br/><span class="badge badge-orange">Reps in Reserve</span></td><td>0–5+</td><td>How many more reps you could have done. 0 = failure. 3 = three reps left in the tank.</td></tr>
+    </table>
+
+    <h3>RPE Quick Reference</h3>
+    <table>
+      <tr><th>RPE</th><th>Feel</th><th>RIR Equiv.</th></tr>
+      <tr><td>10</td><td>Max effort — couldn't do another rep</td><td>0</td></tr>
+      <tr><td>9</td><td>Could squeeze out 1 more rep</td><td>1</td></tr>
+      <tr><td>8</td><td>Hard — 2 reps left</td><td>2</td></tr>
+      <tr><td>7</td><td>Moderate — 3 reps left</td><td>3</td></tr>
+      <tr><td>6</td><td>Comfortable — could go much harder</td><td>4+</td></tr>
+    </table>
+
+    <div class="tip">
+      <strong>💡 Tip</strong>
+      Log RPE and RIR consistently and the AI Coach will use that data to make progressively smarter recommendations.
+    </div>
+  </div>
+
+  <!-- 07 -->
+  <div class="section page-break" id="s7">
+    <div class="section-header">
+      <span class="section-num">07</span>
+      <span class="section-icon">📈</span>
+      <span class="section-title">Progress &amp; Charts</span>
+    </div>
+    <p>The Progress tab shows dual-line charts for every exercise you've logged — weight and reps plotted together over your entire history.</p>
+
+    <h3>Reading Your Charts</h3>
+    <div class="card">
+      <div class="card-title">📊 Dual-Line Chart</div>
+      <p>Each exercise graph shows two lines: <strong>weight</strong> (solid, steel blue) and <strong>reps</strong> (dashed, lighter). Both rising together = ideal progression.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">🔍 Scrubbing</div>
+      <p>Drag your finger along the chart to scrub through history session by session. The tooltip shows exact weight, reps, and date for each point.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">👑 1RM Estimate Badge</div>
+      <p>Each exercise card shows your estimated one-rep max (Epley + Brzycki average). Tap the "1RM" button in Log to get a full percentage table.</p>
+    </div>
+
+    <div class="tip">
+      <strong>💡 The longer you log, the more powerful it gets.</strong> After 10+ sessions per exercise, trends and plateaus become clearly visible.
+    </div>
+  </div>
+
+  <!-- 08 -->
+  <div class="section" id="s8">
+    <div class="section-header">
+      <span class="section-num">08</span>
+      <span class="section-icon">🏆</span>
+      <span class="section-title">My Top Lifts</span>
+    </div>
+    <p>The top of the Progress tab shows your personal records for your three most important exercises. By default these are Barbell Bench Press, Barbell Back Squat, and Conventional Deadlift — but you can change them to any exercise in the library.</p>
+
+    <h3>Customising Your Top Lifts</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-body">
+          <strong>Tap "Edit" next to My Top Lifts</strong>
+          <span>The three lift slots expand into individual pickers.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-body">
+          <strong>Tap any slot to change it</strong>
+          <span>A search field appears. Type to filter all 224 exercises. Tap one to select it.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-body">
+          <strong>Tap "Save"</strong>
+          <span>Your choices are saved to your profile and synced across devices.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip">
+      <strong>👑 Crown Badge</strong>
+      The lift with your highest PR across all three receives a "TOP PR" crown badge. Chase it every session.
+    </div>
+  </div>
+
+  <!-- 09 -->
+  <div class="section" id="s9">
+    <div class="section-header">
+      <span class="section-num">09</span>
+      <span class="section-icon">💯</span>
+      <span class="section-title">1RM Estimator</span>
+    </div>
+    <p>Your estimated one-rep max tells you your theoretical maximum for a lift based on what you actually lifted, without ever having to max out.</p>
+
+    <h3>Accessing the 1RM Calculator</h3>
+    <p>In the Log tab, tap the <strong>1RM</strong> pill button in the top-right corner. Enter any weight and rep count to instantly see your estimated 1RM.</p>
+
+    <h3>Percentage Table</h3>
+    <p>Below your 1RM estimate, a full percentage table shows training loads from 50% to 100% — helping you program exactly the right weight for any rep range.</p>
+
+    <table>
+      <tr><th>% of 1RM</th><th>Rep Range</th><th>Training Zone</th></tr>
+      <tr><td>90–100%</td><td>1–3 reps</td><td>Max strength / peaking</td></tr>
+      <tr><td>75–89%</td><td>4–8 reps</td><td>Strength + hypertrophy</td></tr>
+      <tr><td>60–74%</td><td>8–15 reps</td><td>Hypertrophy</td></tr>
+      <tr><td>50–59%</td><td>15+ reps</td><td>Endurance / warmup</td></tr>
+    </table>
+
+    <div class="tip">
+      <strong>🔢 Formula</strong>
+      Uses the average of the Epley and Brzycki formulas for maximum accuracy across all rep ranges.
+    </div>
+  </div>
+
+  <!-- 10 -->
+  <div class="section" id="s10">
+    <div class="section-header">
+      <span class="section-num">10</span>
+      <span class="section-icon">🏋️</span>
+      <span class="section-title">Plate Calculator</span>
+    </div>
+    <p>Know exactly which plates to load before you even walk up to the bar. Tap <strong>Plates</strong> in the Log tab header.</p>
+
+    <h3>How to Use</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-body">
+          <strong>Select your unit (lbs or kg)</strong>
+          <span>Toggle between imperial and metric with the unit switch.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-body">
+          <strong>Choose your bar weight</strong>
+          <span>Standard 45lb / 20kg, Women's 35lb / 15kg, or EZ-Bar 25lb / 11kg.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-body">
+          <strong>Enter your target weight</strong>
+          <span>The calculator instantly shows which plates go on each side, with a colour-coded visual bar diagram.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tip">
+      <strong>🎨 Colour Coding</strong>
+      Each plate size has its own colour matching standard gym plate colours — red 25s, blue 20s, yellow 15s, green 10s, white 5s, and so on.
+    </div>
+  </div>
+
+  <!-- 11 -->
+  <div class="section page-break" id="s11">
+    <div class="section-header">
+      <span class="section-num">11</span>
+      <span class="section-icon">📄</span>
+      <span class="section-title">Workout Templates</span>
+    </div>
+    <p>Save any completed workout as a template and reload it in one tap on any future session.</p>
+
+    <h3>Saving a Template</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-body">
+          <strong>Complete a workout</strong>
+          <span>On the post-workout summary screen, tap "Save as Template".</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-body">
+          <strong>Name your template</strong>
+          <span>Give it a memorable name — "Push Day A", "Leg Day", "Upper Body Volume", etc.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-body">
+          <strong>Tap Save</strong>
+          <span>The template is stored in your account and synced to all devices.</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>Loading a Template</h3>
+    <p>In the Log tab, tap <strong>Templates</strong> to open your saved list. Tap any template to load it as your current workout — all exercises and set structure pre-filled. You just enter the weights and reps.</p>
+
+    <h3>Managing Templates</h3>
+    <p>Open the Templates sheet to rename or delete any template. Changes sync immediately.</p>
+  </div>
+
+  <!-- 12 -->
+  <div class="section" id="s12">
+    <div class="section-header">
+      <span class="section-num">12</span>
+      <span class="section-icon">💪</span>
+      <span class="section-title">Muscle Group Breakdown</span>
+    </div>
+    <p>See exactly which muscle groups you've been training — and which ones you might be neglecting — over the last 7 days, 30 days, or full year.</p>
+
+    <h3>Reading the Breakdown</h3>
+    <div class="card">
+      <div class="card-title">📊 Proportional Bar Chart</div>
+      <p>Each muscle group shows a bar sized proportionally to the number of sets you logged. Bigger bar = more volume that muscle received.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">🗓 Time Ranges</div>
+      <p>Toggle between <strong>7D</strong> (last 7 days), <strong>30D</strong> (last 30 days), and <strong>1Y</strong> (last year) to spot weekly imbalances vs. long-term patterns.</p>
+    </div>
+
+    <div class="tip">
+      <strong>💡 Use this to catch imbalances early.</strong> If your push muscles (chest, shoulders, triceps) are dominating over pull muscles (back, biceps), adjust your programming before it causes issues.
+    </div>
+  </div>
+
+  <!-- 13 -->
+  <div class="section" id="s13">
+    <div class="section-header">
+      <span class="section-num">13</span>
+      <span class="section-icon">📖</span>
+      <span class="section-title">Workout History</span>
+    </div>
+    <p>Every workout you've ever completed lives in the History tab — fully searchable, expandable, and exportable.</p>
+
+    <h3>Browsing History</h3>
+    <p>Sessions are listed newest first. Tap any session card to expand the full exercise list with every set, weight, and rep. Workout labels appear as coloured badges on each card.</p>
+
+    <h3>Exporting to CSV</h3>
+    <p>Tap the <strong>Export CSV</strong> button in the History tab to download all your workout data as a CSV file. Open it in Excel, Google Sheets, or any spreadsheet app for custom analysis. Your data is always yours.</p>
+
+    <div class="tip">
+      <strong>📊 What's included in the export</strong>
+      Date, workout duration, exercise name, set number, weight, reps, RPE, RIR, and any notes you logged.
+    </div>
+  </div>
+
+  <!-- 14 -->
+  <div class="section" id="s14">
+    <div class="section-header">
+      <span class="section-num">14</span>
+      <span class="section-icon">⚖️</span>
+      <span class="section-title">Body Weight Tracking</span>
+    </div>
+    <p>Log your body weight over time to track long-term trends alongside your training data.</p>
+
+    <h3>Logging Body Weight</h3>
+    <p>Go to the Progress tab and scroll to the Body Weight section. Enter today's weight and tap Save. A running chart shows your trend over time.</p>
+
+    <div class="tip">
+      <strong>💡 Best practice</strong>
+      Weigh yourself first thing in the morning, after using the bathroom, and before eating or drinking. Consistency in conditions makes the trend line meaningful.
+    </div>
+  </div>
+
+  <!-- 15 -->
+  <div class="section" id="s15">
+    <div class="section-header">
+      <span class="section-num">15</span>
+      <span class="section-icon">🔥</span>
+      <span class="section-title">Streak Tracking</span>
+    </div>
+    <p>Your streak counts consecutive days with at least one completed workout. It's displayed prominently on the Home tab to keep the habit alive.</p>
+
+    <h3>How Streaks Work</h3>
+    <div class="card">
+      <div class="card-title">📅 Daily counting</div>
+      <p>Log at least one workout per day to extend your streak. Missing a day resets it to zero.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">🔥 Streak display</div>
+      <p>Your current streak is shown as an orange badge on the Home tab. The number updates immediately after finishing a workout.</p>
+    </div>
+
+    <div class="tip">
+      <strong>💡 Rest days are part of the plan.</strong> A streak tracks training frequency — even a short 15-minute session counts. Active recovery work counts too.
+    </div>
+  </div>
+
+  <!-- 16 -->
+  <div class="section page-break" id="s16">
+    <div class="section-header">
+      <span class="section-num">16</span>
+      <span class="section-icon">👤</span>
+      <span class="section-title">Profile &amp; Settings</span>
+    </div>
+    <p>The Profile tab is your personal hub — view and edit your info, set your training goal, review lifetime stats, and access app settings.</p>
+
+    <h3>Profile Fields</h3>
+    <table>
+      <tr><th>Field</th><th>Notes</th></tr>
+      <tr><td>First / Last Name</td><td>Shown as a greeting on the Home tab</td></tr>
+      <tr><td>Age</td><td>Optional — used for context in future coaching features</td></tr>
+      <tr><td>Weight</td><td>Your current body weight (lbs)</td></tr>
+      <tr><td>Height</td><td>Feet and inches</td></tr>
+      <tr><td>Country / City</td><td>Optional location fields</td></tr>
+      <tr><td>Goal</td><td>Build Muscle, Strength, Cardio, Cut / Lean Out, or Maintain</td></tr>
+    </table>
+
+    <h3>Training Goals</h3>
+    <div class="feature-grid">
+      <div class="feature-item"><span class="feature-icon">💪</span><div class="feature-text"><strong>Build Muscle</strong><span>Hypertrophy &amp; size</span></div></div>
+      <div class="feature-item"><span class="feature-icon">🏋️</span><div class="feature-text"><strong>Strength</strong><span>Max power &amp; 1RM</span></div></div>
+      <div class="feature-item"><span class="feature-icon">🏃</span><div class="feature-text"><strong>Cardio</strong><span>Endurance &amp; fitness</span></div></div>
+      <div class="feature-item"><span class="feature-icon">🔥</span><div class="feature-text"><strong>Cut / Lean Out</strong><span>Fat loss &amp; definition</span></div></div>
+      <div class="feature-item"><span class="feature-icon">⚖️</span><div class="feature-text"><strong>Maintain</strong><span>Stay consistent</span></div></div>
+    </div>
+
+    <h3>Settings</h3>
+    <p>Tap <strong>Settings</strong> on the Profile page to access:</p>
+    <div class="card">
+      <div class="card-title">🎨 Theme</div>
+      <p>Toggle between Dark mode and Light mode. Your preference is saved locally.</p>
+    </div>
+  </div>
+
+  <!-- 17 -->
+  <div class="section" id="s17">
+    <div class="section-header">
+      <span class="section-num">17</span>
+      <span class="section-icon">☁️</span>
+      <span class="section-title">Cloud Sync &amp; Export</span>
+    </div>
+    <p>Your data is stored in Firebase Firestore and synced in real time across all your devices — no manual backup required.</p>
+
+    <h3>How Sync Works</h3>
+    <div class="card">
+      <div class="card-title">⚡ Real-time sync</div>
+      <p>Every workout, profile change, and template is saved instantly to the cloud. Sign in on any device and your full history is there immediately.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">📱 Multiple devices</div>
+      <p>Use Barbell Labs on your phone, tablet, and desktop simultaneously. All devices stay in sync automatically.</p>
+    </div>
+
+    <h3>CSV Export</h3>
+    <p>To export your data, go to the <strong>History tab → Export CSV</strong>. The file includes every set from every workout ever logged. No lock-in — your data is always portable.</p>
+
+    <div class="tip">
+      <strong>💡 Data ownership</strong>
+      Barbell Labs never sells or shares your data. You own it completely. Export anytime and take it anywhere.
+    </div>
+  </div>
+
+  <!-- 18 -->
+  <div class="section" id="s18">
+    <div class="section-header">
+      <span class="section-num">18</span>
+      <span class="section-icon">🔒</span>
+      <span class="section-title">Account &amp; Security</span>
+    </div>
+    <p>Manage your account credentials from the Profile tab → Settings → Security.</p>
+
+    <h3>Changing Your Email</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-body">
+          <strong>Go to Profile → Settings → Security → Change Email</strong>
+          <span>Enter your current password to verify your identity.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-body">
+          <strong>Enter your new email address</strong>
+          <span>A verification link is sent to the new address.</span>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-body">
+          <strong>Verify the new address</strong>
+          <span>Click the link in the email. Your account email updates immediately.</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>Changing Your Password</h3>
+    <p>Profile → Settings → Security → Change Password. Enter your current password, then your new password (same requirements as signup: min. 8 chars, 1 uppercase, 1 lowercase, 1 digit).</p>
+
+    <h3>Signing Out</h3>
+    <p>A Sign Out button is always visible at the bottom of the Profile tab. Tapping it signs you out and returns you to the login screen. Your data remains safely stored in the cloud.</p>
+
+    <h3>Sign In with Google</h3>
+    <p>If you created your account with Google, your password is managed through your Google account. Email/password changes are not available for Google accounts.</p>
+
+    <div class="tip">
+      <strong>🔒 Security</strong>
+      All data is encrypted in transit and at rest via Firebase. Barbell Labs never stores your password — it's handled entirely by Firebase Authentication.
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<div class="divider"></div>
+
+<footer>
+  <div style="font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:3px; margin-bottom:12px;">
+    BARBELL<span style="color:var(--accent)">LABS</span>
+  </div>
+  <div style="margin-bottom:8px;">
+    Version <strong>2.3.3</strong> · Built 2026-04-18 · <strong>barbelllabs.ca</strong>
+  </div>
+  <div style="margin-top:8px; opacity:0.4; font-size:11px; letter-spacing:1px; text-transform:uppercase;">
+    Barbell Labs © 2026 · All rights reserved
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+  // Smooth scroll for TOC links
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(a.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  // PDF download — no print dialog
+  function downloadPDF() {
+    const btn = document.getElementById('pdfBtn');
+    btn.textContent = '⏳ Generating PDF…';
+    btn.disabled = true;
+
+    // Temporarily hide all no-print elements
+    document.querySelectorAll('.no-print').forEach(el => el.style.setProperty('display','none','important'));
+
+    const opt = {
+      margin:      [10, 12, 10, 12],
+      filename:    'barbell-labs-user-manual.pdf',
+      image:       { type: 'jpeg', quality: 0.97 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0d0d0d', logging: false },
+      jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak:   { mode: ['avoid-all', 'css', 'legacy'] },
+    };
+
+    html2pdf().set(opt).from(document.body).save().then(() => {
+      document.querySelectorAll('.no-print').forEach(el => el.style.removeProperty('display'));
+      btn.innerHTML = '⬇ Save as PDF';
+      btn.disabled = false;
+    });
+  }
+</script>
+</body>
+</html>

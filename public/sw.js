@@ -1,4 +1,4 @@
-const CACHE = "gymtrack-v1";
+const CACHE = "barbelllabs-v1";
 const STATIC = ["/", "/index.html", "/manifest.json"];
 
 self.addEventListener("install", e => {
