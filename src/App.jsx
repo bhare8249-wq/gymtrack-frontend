@@ -2049,10 +2049,26 @@ export default function App() {
               </>
             )}
             {data.workouts.length === 0 && (
-              <div style={{ textAlign: "center", padding: "48px 0 24px", color: t.textMuted }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>🏋️</div>
-                <div style={{ fontSize: 16, fontWeight: 600, color: t.textSub, marginBottom: 6 }}>No workouts yet</div>
-                <div style={{ fontSize: 13 }}>Tap the button above to log your first session</div>
+              <div style={{ textAlign: "center", padding: "32px 8px 24px" }}>
+                <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 22, letterSpacing: 1.5, color: t.textSub, marginBottom: 20 }}>YOUR JOURNEY STARTS NOW</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24, textAlign: "left" }}>
+                  {[
+                    { step: "1", icon: "➕", title: "Tap Start Workout", body: "Hit the button above and add your first exercise." },
+                    { step: "2", icon: "📝", title: "Log Your Sets", body: "Enter weight and reps for each set. Add RPE or RIR if you want." },
+                    { step: "3", icon: "🏁", title: "Finish & See Your Data", body: "Complete the session and watch your stats come to life." },
+                  ].map(s => (
+                    <div key={s.step} style={{ display: "flex", alignItems: "flex-start", gap: 14, background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 14, padding: "14px 16px" }}>
+                      <div style={{ width: 32, height: 32, borderRadius: "50%", background: `${accent}20`, border: `1px solid ${accent}40`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: "'Bebas Neue', cursive", fontSize: 16, color: accent }}>{s.step}</div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 2 }}>{s.icon} {s.title}</div>
+                        <div style={{ fontSize: 12, color: t.textMuted, lineHeight: 1.5 }}>{s.body}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize: 12, color: t.textMuted, lineHeight: 1.6, padding: "0 8px" }}>
+                  💡 Tip: the more sessions you log, the smarter your AI coaching gets.
+                </div>
               </div>
             )}
           </div>
@@ -2174,7 +2190,18 @@ export default function App() {
               </div>
             )}
           </div>
-          {data.workouts.length === 0 && <div style={{ textAlign: "center", color: t.textMuted, padding: 40 }}>No history yet</div>}
+          {data.workouts.length === 0 && (
+            <div style={{ textAlign: "center", padding: "56px 24px 40px" }}>
+              <div style={{ fontSize: 64, marginBottom: 20, lineHeight: 1 }}>📋</div>
+              <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 26, letterSpacing: 1.5, color: t.text, marginBottom: 10 }}>NO HISTORY YET</div>
+              <div style={{ color: t.textMuted, fontSize: 14, lineHeight: 1.7, maxWidth: 260, margin: "0 auto 28px" }}>
+                Every workout you finish gets saved here. Your first session is one tap away.
+              </div>
+              <button onClick={() => setView("log")} style={{ background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#fff", border: "none", borderRadius: 12, padding: "13px 28px", fontFamily: "'Bebas Neue', cursive", fontSize: 18, letterSpacing: 1, cursor: "pointer" }}>
+                START YOUR FIRST WORKOUT
+              </button>
+            </div>
+          )}
           {data.workouts.map((w, i) => (
             <div key={i} id={`hcard-${i}`} style={{ scrollMarginTop: 16 }}>
               <WorkoutHistoryCard workout={w} index={i}
@@ -2244,7 +2271,30 @@ export default function App() {
             })()}
           </div>
           {data.workouts.length === 0
-            ? <div style={{ color: t.textMuted, fontSize: 14, textAlign: "center", padding: "32px 0" }}><Icon name="chart" size={32} /><div style={{ marginTop: 12 }}>Log workouts to see progression charts</div></div>
+            ? (
+              <div style={{ textAlign: "center", padding: "48px 24px 40px" }}>
+                <div style={{ fontSize: 64, marginBottom: 20, lineHeight: 1 }}>📈</div>
+                <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 26, letterSpacing: 1.5, color: t.text, marginBottom: 10 }}>YOUR STORY STARTS HERE</div>
+                <div style={{ color: t.textMuted, fontSize: 14, lineHeight: 1.7, maxWidth: 270, margin: "0 auto 20px" }}>
+                  Log your first workout and Barbell Labs will start building your progression charts — weight, reps, PRs, all of it.
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 280, margin: "0 auto 28px" }}>
+                  {[
+                    { icon: "📊", text: "Dual-line weight & rep charts" },
+                    { icon: "👑", text: "Automatic PR detection" },
+                    { icon: "🤖", text: "AI coaching after every session" },
+                  ].map(f => (
+                    <div key={f.text} style={{ display: "flex", alignItems: "center", gap: 12, background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 12, padding: "12px 16px" }}>
+                      <span style={{ fontSize: 20 }}>{f.icon}</span>
+                      <span style={{ fontSize: 13, color: t.textSub }}>{f.text}</span>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={() => setView("log")} style={{ background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#fff", border: "none", borderRadius: 12, padding: "13px 28px", fontFamily: "'Bebas Neue', cursive", fontSize: 18, letterSpacing: 1, cursor: "pointer" }}>
+                  LOG YOUR FIRST LIFT
+                </button>
+              </div>
+            )
             : (() => {
                 const names = [...new Set(data.workouts.flatMap(w => w.exercises.map(e => e.name)))].sort();
                 const palette = ["#5B9BD5", "#A8C8E8", "#5bb85b", "#d55b5b", "#b55bd5", "#d5a55b", "#5bd5d5", "#d55ba0"];
