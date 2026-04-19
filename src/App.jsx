@@ -1831,6 +1831,34 @@ function PlateCalculator({ onClose }) {
   );
 }
 
+// ── Count-Up Hook ─────────────────────────────────────────────────────
+function useCountUp(target, duration = 700) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (target === 0) { setValue(0); return; }
+    const start = Date.now();
+    const tick = () => {
+      const p = Math.min((Date.now() - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setValue(Math.round(eased * target));
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [target, duration]);
+  return value;
+}
+
+function StatCard({ icon, color, label, value }) {
+  const displayed = useCountUp(value);
+  return (
+    <div style={{ background: "var(--bl-surface)", borderRadius: 18, padding: "20px 8px 16px", textAlign: "center", border: "1px solid var(--bl-border)", borderTop: `3px solid ${color}`, boxShadow: "0 4px 24px rgba(0,0,0,0.20)" }}>
+      <div style={{ fontSize: 20, marginBottom: 6 }}>{icon}</div>
+      <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 32, color, lineHeight: 1 }}>{displayed}</div>
+      <div style={{ fontSize: 10, color: "var(--bl-muted)", marginTop: 4, textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</div>
+    </div>
+  );
+}
+
 // ── Main App ──────────────────────────────────────────────────────────
 export default function App() {
   const [firebaseUser, setFirebaseUser] = useState(null);
@@ -1848,6 +1876,9 @@ export default function App() {
   const authedUser = firebaseUser?.displayName || firebaseUser?.email?.split("@")[0] || "";
   const [data, save] = useStorage(firebaseUser?.uid);
   const [view, setView] = useState("home");
+  const [viewKey, setViewKey] = useState(0);
+  const [viewDir, setViewDir] = useState(1);
+  const prevViewRef = useRef("home");
   const [workout, setWorkout] = useState(null);
   const [exSearch, setExSearch] = useState("");
   const [showExPicker, setShowExPicker] = useState(false);
@@ -1894,9 +1925,24 @@ export default function App() {
       input, textarea { -webkit-user-select: auto !important; user-select: auto !important; }
       button { -webkit-user-select: none; user-select: none; }
       button:active { transform: scale(0.96); }
+      @keyframes bl-slide-r { from { opacity:0; transform:translateX(22px); } to { opacity:1; transform:translateX(0); } }
+      @keyframes bl-slide-l { from { opacity:0; transform:translateX(-22px); } to { opacity:1; transform:translateX(0); } }
+      @keyframes bl-card-in { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
     `;
     document.head.appendChild(style);
   }, []);
+
+  // Track view direction for slide animation
+  useEffect(() => {
+    const VIEWS = ["home", "log", "history", "progress", "profile", "admin"];
+    const oldIdx = VIEWS.indexOf(prevViewRef.current);
+    const newIdx = VIEWS.indexOf(view);
+    if (oldIdx !== newIdx) {
+      setViewDir(newIdx >= oldIdx ? 1 : -1);
+      setViewKey(k => k + 1);
+    }
+    prevViewRef.current = view;
+  }, [view]);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -1979,8 +2025,12 @@ export default function App() {
 
   return (
     <ThemeCtx.Provider value={theme}>
-    <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ background: t.bg, minHeight: "100vh", color: t.text, fontFamily: "'DM Sans', sans-serif", maxWidth: 420, margin: "0 auto", position: "relative", paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))", transition: "background 0.3s, color 0.3s" }}>
+    <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
+      style={{ "--bl-surface": t.surfaceHigh, "--bl-border": t.border, "--bl-muted": t.textMuted, background: t.bg, minHeight: "100vh", color: t.text, fontFamily: "'DM Sans', sans-serif", maxWidth: 420, margin: "0 auto", position: "relative", paddingBottom: "calc(80px + env(safe-area-inset-bottom, 0px))", transition: "background 0.3s, color 0.3s" }}>
       {completedWorkout && <WorkoutCompleteScreen workout={completedWorkout.workout} prevWorkouts={completedWorkout.prevWorkouts} onClose={() => setCompletedWorkout(null)} />}
+
+      {/* ── ANIMATED VIEW WRAPPER ────────── */}
+      <div key={viewKey} style={{ animation: `${viewDir >= 0 ? "bl-slide-r" : "bl-slide-l"} 0.24s cubic-bezier(0.16,1,0.3,1) both` }}>
 
       {/* ── HOME ─────────────────────────── */}
       {view === "home" && (() => {
@@ -2016,13 +2066,7 @@ export default function App() {
             </div>
             {/* Stat cards */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 20 }}>
-              {statsRow.map(s => (
-                <div key={s.label} style={{ background: t.surfaceHigh, borderRadius: 18, padding: "20px 8px 16px", textAlign: "center", border: `1px solid ${t.border}`, borderTop: `3px solid ${s.color}`, boxShadow: `0 4px 24px rgba(0,0,0,0.20)` }}>
-                  <div style={{ fontSize: 20, marginBottom: 6 }}>{s.icon}</div>
-                  <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 32, color: s.color, lineHeight: 1 }}>{s.value}</div>
-                  <div style={{ fontSize: 10, color: t.textMuted, marginTop: 4, textTransform: "uppercase", letterSpacing: 0.8 }}>{s.label}</div>
-                </div>
-              ))}
+              {statsRow.map(s => <StatCard key={s.label} {...s} />)}
             </div>
             {/* CTA */}
             <button onClick={startWorkout} style={{ ...S.solidBtn(), width: "100%", padding: "20px", fontSize: 19, borderRadius: 16, marginBottom: 28, boxShadow: `0 8px 32px ${accentGlow}`, letterSpacing: 1.2 }}>+ Start Workout</button>
@@ -2034,7 +2078,7 @@ export default function App() {
                   const labels = w.labels || (w.label ? [w.label] : []);
                   const labelCfgs = labels.map(id => WORKOUT_LABELS.find(l => l.id === id)).filter(Boolean);
                   return (
-                    <div key={i} style={{ ...S.card(), display: "flex", alignItems: "center", gap: 14, padding: "15px 18px" }}>
+                    <div key={i} style={{ ...S.card(), display: "flex", alignItems: "center", gap: 14, padding: "15px 18px", animation: "bl-card-in 0.3s ease both", animationDelay: `${i * 60}ms` }}>
                       <div style={{ width: 42, height: 42, borderRadius: 12, background: labelCfgs[0] ? labelCfgs[0].bg : `${accent}15`, border: `1px solid ${labelCfgs[0] ? labelCfgs[0].border : accent + "30"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
                         {labelCfgs[0] ? labelCfgs[0].emoji : "🏋️"}
                       </div>
@@ -2203,7 +2247,7 @@ export default function App() {
             </div>
           )}
           {data.workouts.map((w, i) => (
-            <div key={i} id={`hcard-${i}`} style={{ scrollMarginTop: 16 }}>
+            <div key={i} id={`hcard-${i}`} style={{ scrollMarginTop: 16, animation: "bl-card-in 0.3s ease both", animationDelay: `${Math.min(i, 8) * 50}ms` }}>
               <WorkoutHistoryCard workout={w} index={i}
                 onLabelChange={(idx, arr) => { const wks = [...data.workouts]; wks[idx] = { ...wks[idx], labels: arr, label: arr[0] || null }; save({ ...data, workouts: wks }); }}
                 onDelete={(idx) => save({ ...data, workouts: data.workouts.filter((_, j) => j !== idx) })}
@@ -2508,6 +2552,8 @@ export default function App() {
 
       {/* ── ADMIN PANEL ──────────────────── */}
       {view === "admin" && isAdminUser(authedUser) && <AdminPanel currentUser={authedUser} />}
+
+      </div>{/* end animated view wrapper */}
 
       {/* ── HELP MODAL ───────────────────── */}
       {helpPage && <HelpModal page={helpPage} onClose={() => setHelpPage(null)} />}
