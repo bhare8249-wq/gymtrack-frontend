@@ -1415,7 +1415,96 @@ function GoogleSignInButton({ onError }) {
 }
 
 // ── Landing Page ──────────────────────────────────────────────────────
+const ONBOARD_SLIDES = [
+  {
+    icon: "🏋️",
+    title: "LOG EVERY LIFT",
+    body: "Track sets, reps, and weight for every exercise. Gym, home, garage — wherever you train.",
+  },
+  {
+    icon: "📈",
+    title: "WATCH YOURSELF GROW",
+    body: "Dual-line charts show your weight and reps climbing together. The more you log, the more you see.",
+  },
+  {
+    icon: "🤖",
+    title: "AI COACHING",
+    body: "After every session Barbell Labs tells you exactly what to do next — push harder, deload, or break a plateau.",
+  },
+  {
+    icon: "⚡",
+    title: "BUILT FOR SERIOUS LIFTERS",
+    body: "RPE, RIR, PR tracking, streak counter, rest timer. Everything you need, nothing you don't.",
+  },
+];
+
+function OnboardingCarousel({ onDone }) {
+  const [slide, setSlide] = useState(0);
+  const [exiting, setExiting] = useState(false);
+  const touchStartX = useRef(null);
+
+  const next = () => {
+    if (slide < ONBOARD_SLIDES.length - 1) {
+      setExiting(true);
+      setTimeout(() => { setSlide(s => s + 1); setExiting(false); }, 220);
+    } else {
+      onDone();
+    }
+  };
+
+  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null) return;
+    const dx = touchStartX.current - e.changedTouches[0].clientX;
+    if (dx > 40) next();
+    touchStartX.current = null;
+  };
+
+  const s = ONBOARD_SLIDES[slide];
+  const isLast = slide === ONBOARD_SLIDES.length - 1;
+
+  return (
+    <div
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      style={{ minHeight: "100vh", background: THEMES.dark.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 32px", fontFamily: "'DM Sans', sans-serif", maxWidth: 420, margin: "0 auto", userSelect: "none" }}
+    >
+      {/* Logo */}
+      <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 28, letterSpacing: 4, marginBottom: 48, opacity: 0.6 }}>
+        <span style={{ color: "#fff" }}>BARBELL</span><span style={{ color: accent }}>LABS</span>
+      </div>
+
+      {/* Slide content */}
+      <div style={{ textAlign: "center", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", opacity: exiting ? 0 : 1, transform: exiting ? "translateX(-24px)" : "translateX(0)", transition: "all 0.22s ease" }}>
+        <div style={{ fontSize: 80, marginBottom: 28, lineHeight: 1 }}>{s.icon}</div>
+        <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 36, letterSpacing: 2, color: "#fff", marginBottom: 16, lineHeight: 1.1 }}>{s.title}</div>
+        <div style={{ color: "#8899aa", fontSize: 16, lineHeight: 1.7, maxWidth: 300 }}>{s.body}</div>
+      </div>
+
+      {/* Dots */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 36 }}>
+        {ONBOARD_SLIDES.map((_, i) => (
+          <div key={i} onClick={() => setSlide(i)} style={{ width: i === slide ? 24 : 8, height: 8, borderRadius: 4, background: i === slide ? accent : "#2a2a3a", transition: "all 0.3s ease", cursor: "pointer" }} />
+        ))}
+      </div>
+
+      {/* Buttons */}
+      <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
+        <button onClick={next} style={{ width: "100%", background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#fff", border: "none", borderRadius: 14, padding: 16, fontFamily: "'Bebas Neue', cursive", fontSize: 20, letterSpacing: 1.5, cursor: "pointer" }}>
+          {isLast ? "GET STARTED" : "NEXT"}
+        </button>
+        {!isLast && (
+          <button onClick={onDone} style={{ background: "transparent", border: "none", color: "#444", fontSize: 14, cursor: "pointer", padding: 8 }}>
+            Skip
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function LandingPage({ onNewUser }) {
+  const [showOnboard, setShowOnboard] = useState(() => !localStorage.getItem("bl_onboarded"));
   const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -1426,7 +1515,14 @@ function LandingPage({ onNewUser }) {
   const [verifiedEmail, setVerifiedEmail] = useState("");
   const bg = THEMES.dark.bg; const sh = THEMES.dark.surfaceHigh;
 
-  useEffect(() => { setTimeout(() => setAnimIn(true), 60); }, []);
+  const handleOnboardDone = () => {
+    localStorage.setItem("bl_onboarded", "1");
+    setShowOnboard(false);
+  };
+
+  useEffect(() => { if (!showOnboard) setTimeout(() => setAnimIn(true), 60); }, [showOnboard]);
+
+  if (showOnboard) return <OnboardingCarousel onDone={handleOnboardDone} />;
 
   const switchMode = (m) => { setMode(m); setError(""); setUsername(""); setEmail(""); setPassword(""); };
 
