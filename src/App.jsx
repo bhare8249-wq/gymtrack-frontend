@@ -2768,6 +2768,42 @@ function StatCard({ icon, color, label, value }) {
   );
 }
 
+// ── Verify-Email Gate (blocks app until email is verified) ────────────
+function VerifyEmailScreen({ user, onSignOut }) {
+  const [sent, setSent] = useState(false);
+  const [err,  setErr]  = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const resend = async () => {
+    setBusy(true); setErr(null);
+    try { await sendEmailVerification(user); setSent(true); }
+    catch (e) { setErr(e?.message || "Failed to send. Try again later."); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div style={{ background: "#0A0A0A", minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 28px", fontFamily: "'DM Sans', sans-serif", maxWidth: 420, margin: "0 auto", textAlign: "center" }}>
+      <div style={{ fontSize: 56, marginBottom: 14 }}>📬</div>
+      <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 28, letterSpacing: 2, color: "#fff", marginBottom: 10 }}>Verify Your Email</div>
+      <div style={{ color: "#999", fontSize: 14, lineHeight: 1.6, marginBottom: 4 }}>We sent a verification link to</div>
+      <div style={{ color: "#5B9BD5", fontSize: 14, fontWeight: 700, marginBottom: 20, wordBreak: "break-all" }}>{user.email}</div>
+      <div style={{ background: "#161616", border: "1px solid #2a2a2a", borderRadius: 12, padding: "14px 16px", fontSize: 13, color: "#888", lineHeight: 1.7, marginBottom: 20, textAlign: "left", width: "100%", maxWidth: 320 }}>
+        <div style={{ color: "#ccc", marginBottom: 4, fontWeight: 600 }}>To access your account:</div>
+        <div>1. Open the email from Firebase / Barbell Labs</div>
+        <div>2. Click the <span style={{ color: "#5B9BD5" }}>Verify Email</span> link</div>
+        <div>3. Reload this page</div>
+      </div>
+      {err && <div style={{ color: "#d55b5b", fontSize: 13, marginBottom: 12 }}>{err}</div>}
+      {sent
+        ? <div style={{ color: "#5bb85b", fontSize: 14, fontWeight: 600, marginBottom: 16 }}>✓ Verification email resent</div>
+        : <button onClick={resend} disabled={busy} style={{ width: "100%", maxWidth: 320, background: "linear-gradient(135deg, #5B9BD5, #4A8BC4)", color: "#fff", border: "none", borderRadius: 11, padding: 14, fontFamily: "'Bebas Neue', cursive", letterSpacing: 1.5, fontSize: 18, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.6 : 1, marginBottom: 12 }}>{busy ? "Sending…" : "Resend Email"}</button>
+      }
+      <button onClick={() => window.location.reload()} style={{ background: "transparent", border: "none", color: "#5B9BD5", fontSize: 13, cursor: "pointer", padding: 6 }}>I've verified — reload</button>
+      <button onClick={onSignOut} style={{ background: "transparent", border: "none", color: "#666", fontSize: 12, cursor: "pointer", padding: 6 }}>Sign out</button>
+    </div>
+  );
+}
+
 // ── Main App ──────────────────────────────────────────────────────────
 export default function App() {
   const [firebaseUser, setFirebaseUser] = useState(null);
@@ -2885,6 +2921,7 @@ export default function App() {
   );
 
   if (!firebaseUser) return <LandingPage onNewUser={() => setIsNewUser(true)} />;
+  if (!firebaseUser.emailVerified) return <VerifyEmailScreen user={firebaseUser} onSignOut={() => signOut(auth)} />;
 
   const gymBibleNames = new Set(GYM_BIBLE.map(e => e.name));
   const customExNames = [...new Set(data.workouts.flatMap(w => w.exercises.map(e => e.name)).filter(n => !gymBibleNames.has(n)))];
