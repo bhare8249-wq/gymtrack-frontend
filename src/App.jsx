@@ -146,7 +146,7 @@ const makeStyles = (t) => ({
 // v2.3.5  2026-04-18  Renamed all gymtrack references to barbelllabs across project
 // v2.4.0  2026-04-18  Weekly volume bar chart in Progress tab; bodyweight log + mini chart on Home tab
 // v2.4.1  2026-04-18  Bodyweight chart upgraded to full interactive progression chart; widget moved to Profile tab
-const APP_VERSION = "2.4.18";
+const APP_VERSION = "2.4.19";
 const BUILD_DATE  = "2026-04-22";
 
 function useStorage(uid) {
@@ -2165,7 +2165,7 @@ function WorkoutHistoryCard({ workout, index, onLabelChange, onDelete, onSaveTem
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 600, fontSize: 14, color: t.text }}>{formatDate(workout.date)}</div>
               <div style={{ fontSize: 11, color: t.textMuted, marginTop: 1 }}>
-                {workout.exercises.length} exercise{workout.exercises.length !== 1 ? "s" : ""}{workout.duration ? ` · ${workout.duration}min` : ""}
+                {workout.exercises.length} exercise{workout.exercises.length !== 1 ? "s" : ""} · {workout.duration ? `${workout.duration}m` : "—"}
               </div>
             </div>
             <span style={{ color: t.textMuted, flexShrink: 0, display: "flex", transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "rotate(0deg)" }}><Icon name="chevronDown" size={16} /></span>
@@ -4099,7 +4099,7 @@ export default function App() {
                         <div style={{ fontWeight: 600, fontSize: 14, color: t.text }}>{formatDate(w.date)}</div>
                         <div style={{ color: t.textMuted, fontSize: 12, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.exercises.map(e => e.name).join(" · ")}</div>
                       </div>
-                      <div style={{ color: t.textMuted, fontSize: 12, flexShrink: 0 }}>{w.duration ? `${w.duration}m` : ""}</div>
+                      <div style={{ color: t.textMuted, fontSize: 12, flexShrink: 0 }}>{w.duration ? `${w.duration}m` : "—"}</div>
                     </div>
                   );
                 })}
