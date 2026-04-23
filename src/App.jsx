@@ -146,7 +146,7 @@ const makeStyles = (t) => ({
 // v2.3.5  2026-04-18  Renamed all gymtrack references to barbelllabs across project
 // v2.4.0  2026-04-18  Weekly volume bar chart in Progress tab; bodyweight log + mini chart on Home tab
 // v2.4.1  2026-04-18  Bodyweight chart upgraded to full interactive progression chart; widget moved to Profile tab
-const APP_VERSION = "2.4.20";
+const APP_VERSION = "2.4.21";
 const BUILD_DATE  = "2026-04-22";
 
 function useStorage(uid) {
@@ -3460,11 +3460,13 @@ function computeMissedWorkoutNudge(data) {
 
 // ── Tools Menu (Log screen overflow: 1RM, Plates, etc.) ──────────────
 // Fix #24: History overflow menu (Export workouts, future: Delete all, etc.)
-function HistoryMenu({ onClose, onExport }) {
+function HistoryMenu({ onClose, onExportAll, onExportFiltered, filteredCount, totalCount, hasFilter }) {
   const t = useT();
-  const items = [
-    { icon: "download", label: "Export Workouts (CSV)", sub: "Download your full workout history as a spreadsheet", onClick: onExport },
-  ];
+  const items = [];
+  if (hasFilter) {
+    items.push({ icon: "download", label: `Export filtered (${filteredCount})`, sub: "Only the workouts matching your current search / date range", onClick: onExportFiltered });
+  }
+  items.push({ icon: "download", label: hasFilter ? `Export all (${totalCount})` : "Export Workouts (CSV)", sub: hasFilter ? "Your full workout history, ignoring current filters" : "Download your full workout history as a spreadsheet", onClick: onExportAll });
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 900, display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center" }} onClick={onClose}>
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
@@ -4047,20 +4049,79 @@ export default function App() {
     setWorkout(null); setView("home");
     setCompletedWorkout({ workout: cleaned, prevWorkouts: prev });
   };
-  const exportCSV = () => {
-    const rows = [["Date", "Exercise", "Set", "Weight (lbs)", "Reps", "Tags"]];
-    data.workouts.forEach(w => {
-      const tags = (w.labels || (w.label ? [w.label] : [])).join("+");
-      w.exercises.forEach(ex => ex.sets.forEach((s, i) => rows.push([w.date, ex.name, i + 1, s.weight, s.reps, tags])));
+  // Fix #22 helper: filter for History search + range (also used by export when scope="filtered")
+  const getFilteredWorkouts = () => {
+    const searchLower = historySearch.trim().toLowerCase();
+    const rangeFrom = historyRange?.from ? new Date(historyRange.from) : null;
+    const rangeTo = historyRange?.to ? new Date(historyRange.to + "T23:59:59") : null;
+    return (data.workouts || []).filter(w => {
+      if (searchLower && !w.exercises.some(e => e.name.toLowerCase().includes(searchLower))) return false;
+      if (rangeFrom || rangeTo) {
+        const d = new Date(w.date);
+        if (rangeFrom && d < rangeFrom) return false;
+        if (rangeTo && d > rangeTo) return false;
+      }
+      return true;
     });
-    const csv = rows.map(r => r.map(v => `"${v}"`).join(",")).join("\n");
-    const dataUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+  };
+  const hasHistoryFilter = !!historySearch.trim() || !!historyRange;
+
+  // Fix #25: proper CSV export — escaping, BOM, full column set, blank (not "undefined") for missing fields
+  const exportCSV = (scope = "all") => {
+    const workouts = scope === "filtered" ? getFilteredWorkouts() : (data.workouts || []);
+    const csvCell = (v) => {
+      const s = (v === undefined || v === null) ? "" : String(v);
+      return `"${s.replace(/"/g, '""')}"`;
+    };
+    const tagName = (id) => {
+      const hit = findLabel(id, data.customTags);
+      return hit ? hit.label : id;
+    };
+    const header = ["Date", "Workout Name", "Tags", "Exercise", "Set #", "Weight (lbs)", "Reps", "RPE", "Notes", "Duration (min)"];
+    const rows = [header];
+    workouts.forEach(w => {
+      const labels = w.labels || (w.label ? [w.label] : []);
+      const tagNames = labels.map(tagName);
+      const workoutName = tagNames[0] || "";
+      const tagsCell = tagNames.join(", ");
+      const duration = (w.duration != null) ? w.duration : "";
+      if (!w.exercises || w.exercises.length === 0) {
+        rows.push([w.date, workoutName, tagsCell, "", "", "", "", "", "", duration]);
+        return;
+      }
+      w.exercises.forEach(ex => {
+        const note = ex.note || "";
+        if (!ex.sets || ex.sets.length === 0) {
+          rows.push([w.date, workoutName, tagsCell, ex.name, "", "", "", "", note, duration]);
+          return;
+        }
+        ex.sets.forEach((s, i) => {
+          rows.push([
+            w.date,
+            workoutName,
+            tagsCell,
+            ex.name,
+            i + 1,
+            s.weight,
+            s.reps,
+            (s.rpe != null) ? s.rpe : "",
+            note,
+            duration,
+          ]);
+        });
+      });
+    });
+    const csv = "\uFEFF" + rows.map(r => r.map(csvCell).join(",")).join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = dataUri;
-    a.download = `barbellabs-${authedUser}-${todayISO()}.csv`;
+    a.href = url;
+    const suffix = scope === "filtered" ? "-filtered" : "";
+    a.download = `barbell-labs-${authedUser}-${todayISO()}${suffix}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const templates = data.templates || [];
@@ -4349,19 +4410,9 @@ export default function App() {
 
       {/* ── HISTORY ──────────────────────── */}
       {view === "history" && (() => {
-        // Fix #22: filter by search + custom date range BEFORE grouping
+        // Fix #22/#25: use the App-level filtered-workouts helper so Export + History share one source
         const searchLower = historySearch.trim().toLowerCase();
-        const rangeFrom = historyRange?.from ? new Date(historyRange.from) : null;
-        const rangeTo = historyRange?.to ? new Date(historyRange.to + "T23:59:59") : null;
-        const filteredWorkouts = data.workouts.filter(w => {
-          if (searchLower && !w.exercises.some(e => e.name.toLowerCase().includes(searchLower))) return false;
-          if (rangeFrom || rangeTo) {
-            const d = new Date(w.date);
-            if (rangeFrom && d < rangeFrom) return false;
-            if (rangeTo && d > rangeTo) return false;
-          }
-          return true;
-        });
+        const filteredWorkouts = getFilteredWorkouts();
         const historyGroups = groupWorkoutsByPeriod(filteredWorkouts);
         const recencyOpts = [
           { value: "7",  label: "Last 7 days"  },
@@ -4795,7 +4846,14 @@ export default function App() {
       {showNotifs && <NotificationsModal notifications={notifications} onClose={() => setShowNotifs(false)} onMarkAllRead={markAllNotifsRead} onClearAll={clearAllNotifs} onToggleRead={toggleNotifRead} />}
       {showTools && <ToolsMenu onClose={() => setShowTools(false)} on1RM={() => setShow1RM(true)} onPlates={() => setShowPlateCalc(true)} />}
       {showManageTags && <ManageTagsModal customTags={data.customTags} onClose={() => setShowManageTags(false)} onChange={(next) => save({ ...data, customTags: next })} />}
-      {showHistoryMenu && <HistoryMenu onClose={() => setShowHistoryMenu(false)} onExport={() => exportCSV()} />}
+      {showHistoryMenu && <HistoryMenu
+        onClose={() => setShowHistoryMenu(false)}
+        onExportAll={() => exportCSV("all")}
+        onExportFiltered={() => exportCSV("filtered")}
+        hasFilter={hasHistoryFilter}
+        filteredCount={hasHistoryFilter ? getFilteredWorkouts().length : 0}
+        totalCount={(data.workouts || []).length}
+      />}
       {showProgramBrowser && <ProgramBrowser
         onClose={() => setShowProgramBrowser(false)}
         onFork={(program, w) => {
