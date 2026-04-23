@@ -146,7 +146,7 @@ const makeStyles = (t) => ({
 // v2.3.5  2026-04-18  Renamed all gymtrack references to barbelllabs across project
 // v2.4.0  2026-04-18  Weekly volume bar chart in Progress tab; bodyweight log + mini chart on Home tab
 // v2.4.1  2026-04-18  Bodyweight chart upgraded to full interactive progression chart; widget moved to Profile tab
-const APP_VERSION = "2.4.4";
+const APP_VERSION = "2.4.5";
 const BUILD_DATE  = "2026-04-22";
 
 function useStorage(uid) {
@@ -2841,6 +2841,143 @@ function VerifyEmailScreen({ user, onSignOut }) {
   );
 }
 
+// ── Fix #7: Notifications (client-side, computed from workout data) ───
+const STREAK_MILESTONES = [3, 7, 14, 30, 60, 100, 365];
+const NUDGE_THRESHOLD_DAYS = 4;
+
+const notifId = () => {
+  try { return crypto.randomUUID(); }
+  catch { return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
+};
+
+function formatRelative(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const sec = Math.max(0, Math.floor(diff / 1000));
+  if (sec < 60) return "just now";
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}d ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+function computeWorkoutNotifications(data, newWorkout, prevWorkouts) {
+  const out = [];
+  const state = data.notificationState || { since: new Date().toISOString(), lastStreakMilestone: 0 };
+  const now = new Date().toISOString();
+
+  newWorkout.exercises.forEach(ex => {
+    const best = Math.max(0, ...ex.sets.map(s => parseFloat(s.weight) || 0));
+    if (best <= 0) return;
+    const prevBest = Math.max(0, ...prevWorkouts.flatMap(w => w.exercises.filter(e => e.name === ex.name).flatMap(e => e.sets.map(s => parseFloat(s.weight) || 0))));
+    if (prevBest > 0 && best > prevBest) {
+      out.push({
+        id: notifId(), type: "pr", emoji: "🏆", read: false, timestamp: now,
+        title: `New PR — ${ex.name}`,
+        body: `${best} lbs beats your previous best of ${prevBest} lbs.`,
+      });
+    } else if (prevBest === 0) {
+      out.push({
+        id: notifId(), type: "pr", emoji: "⭐", read: false, timestamp: now,
+        title: `First log — ${ex.name}`,
+        body: `Baseline set at ${best} lbs. Next session's the real test.`,
+      });
+    }
+  });
+
+  const streak = calcStreak([newWorkout, ...prevWorkouts]);
+  const nextMs = STREAK_MILESTONES.find(m => streak >= m && (state.lastStreakMilestone || 0) < m);
+  let lastMs = state.lastStreakMilestone || 0;
+  if (nextMs) {
+    out.push({
+      id: notifId(), type: "streak", emoji: "🔥", read: false, timestamp: now,
+      title: `${nextMs}-day streak!`,
+      body: `You've logged a workout ${nextMs} days running. Keep it up.`,
+    });
+    lastMs = nextMs;
+  }
+
+  if (out.length === 0) return null;
+  return {
+    notifications: [...out, ...(data.notifications || [])].slice(0, 100),
+    notificationState: { ...state, lastStreakMilestone: lastMs },
+  };
+}
+
+function computeMissedWorkoutNudge(data) {
+  const workouts = data.workouts || [];
+  if (workouts.length === 0) return null;
+  const lastDate = workouts.reduce((m, w) => w.date > m ? w.date : m, workouts[0].date);
+  const daysSince = Math.floor((Date.now() - new Date(lastDate).getTime()) / 86400000);
+  if (daysSince < NUDGE_THRESHOLD_DAYS) return null;
+  const state = data.notificationState || {};
+  const lastNudge = state.lastNudgeDate ? new Date(state.lastNudgeDate) : null;
+  if (lastNudge && lastNudge > new Date(lastDate)) return null;
+  const now = new Date().toISOString();
+  return {
+    notifications: [
+      { id: notifId(), type: "nudge", emoji: "💭", read: false, timestamp: now,
+        title: `${daysSince} days without a workout`,
+        body: "Your streak is waiting — log a quick session to keep the momentum." },
+      ...(data.notifications || []),
+    ].slice(0, 100),
+    notificationState: { ...state, lastNudgeDate: now },
+  };
+}
+
+// ── Notifications Modal ───────────────────────────────────────────────
+function NotificationsModal({ notifications, onClose, onMarkAllRead, onClearAll, onToggleRead }) {
+  const t = useT();
+  const list = notifications || [];
+  const anyUnread = list.some(n => !n.read);
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 900, display: "flex", flexDirection: "column", justifyContent: "flex-end", alignItems: "center" }} onClick={onClose}>
+      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
+      <div onClick={e => e.stopPropagation()} style={{ position: "relative", width: "100%", maxWidth: 420, background: t.surface, borderRadius: "20px 20px 0 0", padding: "0 20px calc(env(safe-area-inset-bottom, 0px) + 24px)", maxHeight: "85dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", boxShadow: "0 -8px 40px rgba(0,0,0,0.4)" }}>
+        <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 4px" }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border }} />
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 12, borderBottom: `1px solid ${t.border}`, marginBottom: 12, gap: 8 }}>
+          <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 22, letterSpacing: 1 }}>
+            <span style={{ color: accent }}>Notifications</span>
+          </div>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            {anyUnread && <button onClick={onMarkAllRead} style={{ background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 8, color: t.textSub, fontSize: 11, padding: "6px 10px", cursor: "pointer", fontWeight: 600 }}>Mark all read</button>}
+            {list.length > 0 && <button onClick={onClearAll} style={{ background: "transparent", border: "none", color: t.textMuted, fontSize: 11, padding: "6px 4px", cursor: "pointer" }}>Clear</button>}
+            <button onClick={onClose} style={{ background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 8, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: t.textMuted }}>
+              <Icon name="x" size={16} />
+            </button>
+          </div>
+        </div>
+        {list.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "32px 16px 16px" }}>
+            <div style={{ fontSize: 40, marginBottom: 10, opacity: 0.4 }}>🔕</div>
+            <div style={{ color: t.textMuted, fontSize: 14, lineHeight: 1.5 }}>No notifications yet.<br/>You'll see PR unlocks, streak milestones,<br/>and nudges when you've been away.</div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {list.map(n => (
+              <button key={n.id} onClick={() => onToggleRead(n.id)} style={{ display: "flex", gap: 12, alignItems: "flex-start", textAlign: "left", background: n.read ? t.surface : `${accent}10`, border: `1px solid ${n.read ? t.border : accent + "40"}`, borderRadius: 12, padding: "12px 14px", cursor: "pointer", color: t.text, width: "100%", boxSizing: "border-box" }}>
+                <div style={{ fontSize: 22, lineHeight: 1, flexShrink: 0 }}>{n.emoji}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2, display: "flex", alignItems: "center", gap: 8 }}>
+                    {n.title}
+                    {!n.read && <span style={{ width: 7, height: 7, borderRadius: "50%", background: accent, flexShrink: 0 }} />}
+                  </div>
+                  <div style={{ color: t.textSub, fontSize: 12, lineHeight: 1.4, marginBottom: 4 }}>{n.body}</div>
+                  <div style={{ color: t.textMuted, fontSize: 11 }}>{formatRelative(n.timestamp)}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main App ──────────────────────────────────────────────────────────
 export default function App() {
   const [firebaseUser, setFirebaseUser] = useState(null);
@@ -2876,6 +3013,7 @@ export default function App() {
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [showTemplateManager, setShowTemplateManager] = useState(false);
   const [show1RM, setShow1RM] = useState(false);
+  const [showNotifs, setShowNotifs] = useState(false);
 
   const t = THEMES[theme]; const S = makeStyles(t);
   const profile = data.profile || {};
@@ -2898,6 +3036,21 @@ export default function App() {
   };
   const saveProfile = (updates) => save({ ...data, profile: { ...profile, ...updates } });
   const toggleTheme = () => { const n = theme === "dark" ? "light" : "dark"; setTheme(n); try { localStorage.setItem("barbelllabs-theme", n); } catch {} };
+
+  // Fix #7 — derived notification state
+  const notifications = data.notifications || [];
+  const unreadCount = notifications.filter(n => !n.read).length;
+  const markAllNotifsRead = () => save({ ...data, notifications: notifications.map(n => ({ ...n, read: true })) });
+  const clearAllNotifs = () => save({ ...data, notifications: [] });
+  const toggleNotifRead = (id) => save({ ...data, notifications: notifications.map(n => n.id === id ? { ...n, read: !n.read } : n) });
+
+  // Fix #7 — missed-workout nudge on mount / when workouts change
+  useEffect(() => {
+    if (!firebaseUser) return;
+    const update = computeMissedWorkoutNudge(data);
+    if (update) save({ ...data, ...update });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firebaseUser?.uid, (data.workouts || []).length]);
 
   useEffect(() => {
     const color = theme === "dark" ? "#0A0A0A" : "#FFFFFF";
@@ -2996,7 +3149,8 @@ export default function App() {
   const finishWorkout = () => {
     const cleaned = { ...workout, duration: Math.round((Date.now() - workout.startTime) / 60000), exercises: workout.exercises.map(e => ({ ...e, sets: e.sets.filter(s => s.weight !== "" || s.reps !== "") })).filter(e => e.sets.length > 0) };
     const prev = data.workouts;
-    save({ ...data, workouts: [cleaned, ...data.workouts] });
+    const notifUpdate = computeWorkoutNotifications(data, cleaned, prev);
+    save({ ...data, workouts: [cleaned, ...data.workouts], ...(notifUpdate || {}) });
     haptic([0, 60, 30, 60, 30, 120]);
     setWorkout(null); setView("home");
     setCompletedWorkout({ workout: cleaned, prevWorkouts: prev });
@@ -3072,6 +3226,7 @@ export default function App() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 32, letterSpacing: 2, lineHeight: 1 }}>BARBELL<span style={{ color: accent }}>LABS</span></div>
               <TopActions>
+                <IconBtn icon="bell" onClick={() => setShowNotifs(true)} label="Notifications" badge={unreadCount} />
                 <HelpBtn page="home" onOpen={() => setHelpPage("home")} />
               </TopActions>
             </div>
@@ -3637,6 +3792,7 @@ export default function App() {
       {showSaveTemplate && workout && <SaveTemplateSheet exercises={workout.exercises} onSave={saveTemplate} onClose={() => setShowSaveTemplate(false)} />}
       {showTemplateManager && <TemplateManager templates={templates} onLoad={loadTemplate} onDelete={deleteTemplate} onRename={renameTemplate} onClose={() => setShowTemplateManager(false)} />}
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} toggleTheme={toggleTheme} onEditProfile={() => { setShowSettings(false); setProfileDraft({ ...(data.profile || {}) }); setEditingProfile(true); setView("profile"); }} />}
+      {showNotifs && <NotificationsModal notifications={notifications} onClose={() => setShowNotifs(false)} onMarkAllRead={markAllNotifsRead} onClearAll={clearAllNotifs} onToggleRead={toggleNotifRead} />}
 
       {/* ── SIGN OUT — fixed above nav on profile tab ── */}
       {view === "profile" && (
