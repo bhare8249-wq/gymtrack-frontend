@@ -147,7 +147,7 @@ const makeStyles = (t) => ({
 // v2.3.5  2026-04-18  Renamed all gymtrack references to barbelllabs across project
 // v2.4.0  2026-04-18  Weekly volume bar chart in Progress tab; bodyweight log + mini chart on Home tab
 // v2.4.1  2026-04-18  Bodyweight chart upgraded to full interactive progression chart; widget moved to Profile tab
-const APP_VERSION = "2.4.26";
+const APP_VERSION = "2.4.27";
 const BUILD_DATE  = "2026-04-24";
 
 function useStorage(uid) {
@@ -2391,7 +2391,7 @@ function VerifyEmailRow() {
   );
 }
 
-function SettingsModal({ authedUser, onClose, toggleTheme, onEditProfile, onManageTags, onExport }) {
+function SettingsModal({ authedUser, onClose, themePref, onThemeChoice, onEditProfile, onManageTags, onExport }) {
   const t = useT();
   const theme = useContext(ThemeCtx);
   const accent = "#5B9BD5";
@@ -2441,16 +2441,27 @@ function SettingsModal({ authedUser, onClose, toggleTheme, onEditProfile, onMana
             </button>
           </div>
         )}
-        {/* Theme toggle */}
+        {/* Fix #55: Theme preference — System / Light / Dark */}
         <div style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 11, color: t.textMuted, textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 700, marginBottom: 10 }}>Appearance</div>
-          <button onClick={toggleTheme} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 12, padding: "13px 16px", cursor: "pointer", color: t.text, boxSizing: "border-box" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 600, fontSize: 14 }}>
-              <Icon name={theme === "dark" ? "moon" : "sun"} size={16} />
-              {theme === "dark" ? "Dark Mode" : "Light Mode"}
-            </span>
-            <span style={{ fontSize: 11, color: t.textMuted, fontWeight: 600 }}>Tap to switch</span>
-          </button>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 12, padding: 4 }}>
+            {[
+              { id: "system", label: "System", sub: "Matches OS" },
+              { id: "light",  label: "Light",  icon: "sun" },
+              { id: "dark",   label: "Dark",   icon: "moon" },
+            ].map(opt => {
+              const active = themePref === opt.id;
+              return (
+                <button key={opt.id} onClick={() => onThemeChoice(opt.id)} style={{ background: active ? accent : "transparent", border: "none", color: active ? "#fff" : t.textSub, borderRadius: 9, padding: "10px 6px", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, touchAction: "manipulation" }}>
+                  {opt.icon ? <Icon name={opt.icon} size={14} /> : <span style={{ fontSize: 13 }}>⚙</span>}
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          {themePref === "system" && (
+            <div style={{ fontSize: 10, color: t.textMuted, marginTop: 6, textAlign: "center" }}>Following your device setting — currently {theme}.</div>
+          )}
         </div>
         {/* Email verification */}
         <VerifyEmailRow />
@@ -3878,9 +3889,37 @@ export default function App() {
   const [exEquipFilter, setExEquipFilter] = useState("all");
   const [showExPicker, setShowExPicker] = useState(false);
   const [completedWorkout, setCompletedWorkout] = useState(null);
-  const [theme, setTheme] = useState(() => { try { return localStorage.getItem("barbelllabs-theme") || "dark"; } catch { return "dark"; } });
+  // Fix #55: tri-option theme — "system" | "light" | "dark". Preserves existing
+  // explicit dark/light setting from pre-#55 builds; defaults to "system" for new installs.
+  const [themePref, setThemePref] = useState(() => {
+    try {
+      const newPref = localStorage.getItem("barbelllabs-theme-pref");
+      if (newPref === "system" || newPref === "light" || newPref === "dark") return newPref;
+      const oldPref = localStorage.getItem("barbelllabs-theme");
+      if (oldPref === "light" || oldPref === "dark") return oldPref;
+      return "system";
+    } catch { return "system"; }
+  });
+  const [systemTheme, setSystemTheme] = useState(() => {
+    try { return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; } catch { return "dark"; }
+  });
+  useEffect(() => {
+    try {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      const handler = (e) => setSystemTheme(e.matches ? "dark" : "light");
+      mq.addEventListener("change", handler);
+      return () => mq.removeEventListener("change", handler);
+    } catch {}
+  }, []);
+  const theme = themePref === "system" ? systemTheme : themePref;
+  const setThemeChoice = (pref) => {
+    setThemePref(pref);
+    try { localStorage.setItem("barbelllabs-theme-pref", pref); localStorage.removeItem("barbelllabs-theme"); } catch {}
+  };
   const [editingProfile, setEditingProfile] = useState(false);
   const [profileDraft, setProfileDraft] = useState({});
+  const [profileErrors, setProfileErrors] = useState([]);
+  const [profileSavedFlash, setProfileSavedFlash] = useState(false);
   const [helpPage, setHelpPage] = useState(null);
   const [showPlateCalc, setShowPlateCalc] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -3917,7 +3956,6 @@ export default function App() {
     touchX.current = null;
   };
   const saveProfile = (updates) => save({ ...data, profile: { ...profile, ...updates } });
-  const toggleTheme = () => { const n = theme === "dark" ? "light" : "dark"; setTheme(n); try { localStorage.setItem("barbelllabs-theme", n); } catch {} };
 
   // Fix #7 — derived notification state
   const notifications = data.notifications || [];
@@ -4792,9 +4830,41 @@ export default function App() {
                     </button>;
                   })}
                 </div>
+                {/* Fix #53: validation errors banner */}
+                {profileErrors.length > 0 && (
+                  <div style={{ background: "rgba(213,91,91,0.1)", border: "1px solid rgba(213,91,91,0.35)", borderRadius: 12, padding: "10px 14px", marginBottom: 10 }}>
+                    <div style={{ fontSize: 11, color: "#d55b5b", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Fix before saving</div>
+                    <ul style={{ margin: 0, paddingLeft: 18, color: "#d55b5b", fontSize: 12, lineHeight: 1.5 }}>
+                      {profileErrors.map((err, i) => <li key={i}>{err}</li>)}
+                    </ul>
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: 10 }}>
-                  <button onClick={() => setEditingProfile(false)} style={{ flex: 1, background: "transparent", border: `1px solid ${t.border}`, color: t.textMuted, borderRadius: 14, padding: "15px 0", fontSize: 15, cursor: "pointer", fontWeight: 600, minHeight: 52 }}>Cancel</button>
-                  <button onClick={() => { saveProfile(draft); setEditingProfile(false); }} style={{ flex: 2, background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#ffffff", border: "none", borderRadius: 14, padding: "15px 0", fontSize: 17, cursor: "pointer", fontFamily: "'Bebas Neue', cursive", letterSpacing: 1.2, minHeight: 52 }}>Save Profile</button>
+                  <button onClick={() => { setEditingProfile(false); setProfileErrors([]); }} style={{ flex: 1, background: "transparent", border: `1px solid ${t.border}`, color: t.textMuted, borderRadius: 14, padding: "15px 0", fontSize: 15, cursor: "pointer", fontWeight: 600, minHeight: 52 }}>Cancel</button>
+                  <button onClick={() => {
+                    // Fix #53: validate before save
+                    const errs = [];
+                    const s = (v) => typeof v === "string" ? v.trim() : v;
+                    if (s(draft.firstName) && draft.firstName.length > 50) errs.push("First name is too long (max 50 characters).");
+                    if (s(draft.lastName)  && draft.lastName.length > 50)  errs.push("Last name is too long (max 50 characters).");
+                    const age = draft.age !== "" && draft.age != null ? Number(draft.age) : null;
+                    if (age != null && (isNaN(age) || age < 13 || age > 120)) errs.push("Age must be between 13 and 120.");
+                    const weight = draft.weight !== "" && draft.weight != null ? Number(draft.weight) : null;
+                    if (weight != null && (isNaN(weight) || weight < 50 || weight > 800)) errs.push("Weight must be between 50 and 800 lbs.");
+                    const hFt = draft.heightFt !== "" && draft.heightFt != null ? Number(draft.heightFt) : null;
+                    const hIn = draft.heightIn !== "" && draft.heightIn != null ? Number(draft.heightIn) : null;
+                    if (hFt != null && (isNaN(hFt) || hFt < 3 || hFt > 8)) errs.push("Height (feet) must be between 3 and 8.");
+                    if (hIn != null && (isNaN(hIn) || hIn < 0 || hIn > 11)) errs.push("Height (inches) must be between 0 and 11.");
+                    if (s(draft.city)    && draft.city.length > 60)    errs.push("City name is too long.");
+                    if (s(draft.country) && draft.country.length > 60) errs.push("Country is too long.");
+                    if (errs.length) { setProfileErrors(errs); return; }
+                    setProfileErrors([]);
+                    saveProfile(draft);
+                    setEditingProfile(false);
+                    // Fix #54: save confirmation toast
+                    setProfileSavedFlash(true);
+                    setTimeout(() => setProfileSavedFlash(false), 2200);
+                  }} style={{ flex: 2, background: `linear-gradient(135deg, ${accent}, #4A8BC4)`, color: "#ffffff", border: "none", borderRadius: 14, padding: "15px 0", fontSize: 17, cursor: "pointer", fontFamily: "'Bebas Neue', cursive", letterSpacing: 1.2, minHeight: 52 }}>Save Profile</button>
                 </div>
 
               </div>
@@ -4827,17 +4897,57 @@ export default function App() {
                   {p.goal ? (() => { const g = GOALS.find(g => g.id === p.goal); return <div style={{ display: "flex", alignItems: "center", gap: 14, background: `${g.color}14`, border: `1px solid ${g.color}55`, borderRadius: 11, padding: "14px 16px" }}><span style={{ fontSize: 28 }}>{g.emoji}</span><div><div style={{ color: g.color, fontWeight: 700, fontSize: 17 }}>{g.label}</div><div style={{ color: t.textMuted, fontSize: 13, marginTop: 2 }}>{g.desc}</div></div></div>; })()
                     : <div style={{ color: t.textMuted, fontSize: 14, textAlign: "center", padding: "12px 0" }}>No goal set — tap Edit to add one</div>}
                 </div>
-                <div style={S.card()}>
-                  <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 15, letterSpacing: 1, color: t.textMuted, marginBottom: 14 }}>LIFETIME STATS</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                    {[
-                      { label: "Total Workouts",   val: data.workouts.length },
-                      { label: "Exercises Logged", val: [...new Set(data.workouts.flatMap(w => w.exercises.map(e => e.name)))].length },
-                      { label: "Total Sets",       val: data.workouts.reduce((a, w) => a + w.exercises.reduce((b, e) => b + e.sets.length, 0), 0) },
-                      { label: "This Week",        val: data.workouts.filter(w => (new Date() - new Date(w.date)) / 86400000 <= 7).length },
-                    ].map(s => <div key={s.label}><div style={{ fontSize: 11, color: t.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 3 }}>{s.label}</div><div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 26, color: accent, lineHeight: 1 }}>{s.val}</div></div>)}
-                  </div>
-                </div>
+                {/* Fix #48: Expanded Lifetime Stats */}
+                {(() => {
+                  const ws = data.workouts;
+                  const totalWorkouts = ws.length;
+                  const totalSets = ws.reduce((a, w) => a + w.exercises.reduce((b, e) => b + e.sets.length, 0), 0);
+                  const totalVolume = ws.reduce((a, w) => a + w.exercises.reduce((b, e) => b + e.sets.reduce((c, s) => c + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0), 0), 0);
+                  const totalMinutes = ws.reduce((a, w) => a + (w.duration || 0), 0);
+                  const currentStreak = calcStreak(ws);
+                  // Longest streak across entire history
+                  const uniqueDates = [...new Set(ws.map(w => w.date))].sort();
+                  let longestStreak = 0, run = 0, prev = null;
+                  uniqueDates.forEach(d => {
+                    const cur = new Date(d);
+                    if (prev) {
+                      const diff = Math.round((cur - prev) / 86400000);
+                      run = diff === 1 ? run + 1 : 1;
+                    } else run = 1;
+                    if (run > longestStreak) longestStreak = run;
+                    prev = cur;
+                  });
+                  // Most-logged exercise
+                  const exFreq = {};
+                  ws.forEach(w => w.exercises.forEach(e => { exFreq[e.name] = (exFreq[e.name] || 0) + 1; }));
+                  const mostLogged = Object.entries(exFreq).sort((a, b) => b[1] - a[1])[0];
+                  // Member since: earliest workout date OR firebaseUser creation
+                  const firstDate = uniqueDates[0] || (firebaseUser?.metadata?.creationTime ? new Date(firebaseUser.metadata.creationTime).toISOString().slice(0, 10) : null);
+                  const humanHours = Math.floor(totalMinutes / 60);
+                  const humanMins = totalMinutes % 60;
+                  const fmtVolume = (v) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${Math.round(v / 100) / 10}k` : `${Math.round(v)}`;
+                  return (
+                    <div style={S.card()}>
+                      <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 15, letterSpacing: 1, color: t.textMuted, marginBottom: 14 }}>LIFETIME STATS</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                        {[
+                          { label: "Total Workouts",  val: totalWorkouts },
+                          { label: "Total Sets",      val: totalSets },
+                          { label: "Total Volume",    val: `${fmtVolume(totalVolume)} lbs` },
+                          { label: "Time Training",   val: totalMinutes > 0 ? `${humanHours}h ${humanMins}m` : "—" },
+                          { label: "Current Streak",  val: currentStreak > 0 ? `${currentStreak}d` : "—" },
+                          { label: "Longest Streak",  val: longestStreak > 0 ? `${longestStreak}d` : "—" },
+                        ].map(s => <div key={s.label}><div style={{ fontSize: 11, color: t.textMuted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 3 }}>{s.label}</div><div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 24, color: accent, lineHeight: 1 }}>{s.val}</div></div>)}
+                      </div>
+                      {(mostLogged || firstDate) && (
+                        <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${t.border}`, fontSize: 12, color: t.textMuted, lineHeight: 1.6 }}>
+                          {mostLogged && <div>Most logged: <span style={{ color: t.textSub, fontWeight: 600 }}>{mostLogged[0]}</span> ({mostLogged[1]} sessions)</div>}
+                          {firstDate && <div>Member since: <span style={{ color: t.textSub, fontWeight: 600 }}>{formatDate(firstDate)}</span></div>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
                 {/* Bodyweight */}
                 <BodyweightWidget
                   bodyweight={data.bodyweight || []}
@@ -4888,11 +4998,17 @@ export default function App() {
       {show1RM && <OneRMCalculator onClose={() => setShow1RM(false)} />}
       {showSaveTemplate && workout && <SaveTemplateSheet exercises={workout.exercises} existingTemplates={templates} onSave={saveTemplate} onClose={() => setShowSaveTemplate(false)} />}
       {showTemplateManager && <TemplateManager templates={templates} onLoad={loadTemplate} onDelete={deleteTemplate} onRename={renameTemplate} onClose={() => setShowTemplateManager(false)} />}
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} toggleTheme={toggleTheme} onEditProfile={() => { setShowSettings(false); setProfileDraft({ ...(data.profile || {}) }); setEditingProfile(true); setView("profile"); }} onManageTags={() => { setShowSettings(false); setShowManageTags(true); }} onExport={() => { setShowSettings(false); exportCSV(); }} />}
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} themePref={themePref} onThemeChoice={setThemeChoice} onEditProfile={() => { setShowSettings(false); setProfileDraft({ ...(data.profile || {}) }); setEditingProfile(true); setView("profile"); }} onManageTags={() => { setShowSettings(false); setShowManageTags(true); }} onExport={() => { setShowSettings(false); exportCSV(); }} />}
       {showNotifs && <NotificationsModal notifications={notifications} onClose={() => setShowNotifs(false)} onMarkAllRead={markAllNotifsRead} onClearAll={clearAllNotifs} onToggleRead={toggleNotifRead} />}
       {showTools && <ToolsMenu onClose={() => setShowTools(false)} on1RM={() => setShow1RM(true)} onPlates={() => setShowPlateCalc(true)} />}
       {showManageTags && <ManageTagsModal customTags={data.customTags} onClose={() => setShowManageTags(false)} onChange={(next) => save({ ...data, customTags: next })} />}
       {showTour && <OnboardingTour onDone={() => { setShowTour(false); save({ ...data, profile: { ...(data.profile || {}), onboarded: true } }); }} />}
+      {/* Fix #54: Profile saved toast */}
+      {profileSavedFlash && (
+        <div style={{ position: "fixed", bottom: "calc(92px + env(safe-area-inset-bottom, 0px))", left: "50%", transform: "translateX(-50%)", zIndex: 2100, background: "rgba(91,184,91,0.18)", border: "1px solid rgba(91,184,91,0.45)", borderRadius: 12, padding: "10px 18px", color: "#5bb85b", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 32px rgba(0,0,0,0.35)", pointerEvents: "none", animation: "bl-card-in 0.25s ease both" }}>
+          ✓ Profile saved
+        </div>
+      )}
       {showHistoryMenu && <HistoryMenu
         onClose={() => setShowHistoryMenu(false)}
         onExportAll={() => exportCSV("all")}
