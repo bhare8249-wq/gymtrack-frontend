@@ -147,7 +147,7 @@ const makeStyles = (t) => ({
 // v2.3.5  2026-04-18  Renamed all gymtrack references to barbelllabs across project
 // v2.4.0  2026-04-18  Weekly volume bar chart in Progress tab; bodyweight log + mini chart on Home tab
 // v2.4.1  2026-04-18  Bodyweight chart upgraded to full interactive progression chart; widget moved to Profile tab
-const APP_VERSION = "2.4.27";
+const APP_VERSION = "2.4.28";
 const BUILD_DATE  = "2026-04-24";
 
 function useStorage(uid) {
@@ -949,8 +949,8 @@ function HelpModal({ page, onClose, onReplayTour }) {
               {content.title} <span style={{ color: accent }}>Help</span>
             </div>
           </div>
-          <button onClick={onClose} style={{ background: "transparent", border: "none", color: t.textMuted, cursor: "pointer", display: "flex", padding: 4 }}>
-            <Icon name="x" size={20} />
+          <button onClick={onClose} style={{ background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 8, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: t.textMuted }}>
+            <Icon name="x" size={16} />
           </button>
         </div>
         {/* Scrollable content */}
@@ -1844,12 +1844,20 @@ function Big3PRs({ workouts, profile, onSave, onLogExercise }) {
 }
 
 // ── Set Row ───────────────────────────────────────────────────────────
-function SetRow({ set, index, onChange, onRemove }) {
+function SetRow({ set, index, onChange, onRemove, effortMetric = "rpe" }) {
   const t = useT(); const S = useS();
   const [showRpe, setShowRpe] = useState(false);
   const rpe = set.rpe != null ? parseFloat(set.rpe) : null;
   const rir = set.rir != null ? parseFloat(set.rir) : (rpe != null ? Math.round(10 - rpe) : null);
   const hasRpe = rpe != null;
+  // Fix #82: respect user's preferred effort metric for the chip label
+  const chipValue = effortMetric === "rir"
+    ? (rir != null ? rir : null)
+    : rpe;
+  const hasChip = chipValue != null;
+  const chipLabel = effortMetric === "rir"
+    ? (hasChip ? `${chipValue} RIR` : "RIR")
+    : (hasChip ? `@${chipValue % 1 === 0 ? chipValue : chipValue.toFixed(1)}` : "RPE");
 
   const toneColor = rpe == null ? t.textMuted
     : rpe >= 9.5 ? "#d55b5b"
@@ -1861,22 +1869,22 @@ function SetRow({ set, index, onChange, onRemove }) {
       <SwipeableRow flat onDelete={onRemove} bgColor={t.surfaceHigh}>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <span style={{ width: 18, color: t.textMuted, fontSize: 13, textAlign: "center", flexShrink: 0 }}>{index + 1}</span>
-          <input type="number" inputMode="decimal" placeholder="lbs" value={set.weight} onChange={e => onChange({ ...set, weight: e.target.value })} style={S.inputStyle({ width: 72, padding: "11px 10px" })} />
+          <input type="number" inputMode="decimal" enterKeyHint="next" placeholder="lbs" value={set.weight} onFocus={e => e.target.select()} onChange={e => onChange({ ...set, weight: e.target.value })} style={S.inputStyle({ width: 72, padding: "11px 10px" })} />
           <span style={{ color: t.textMuted, fontSize: 13, flexShrink: 0 }}>×</span>
-          <input type="number" inputMode="numeric" placeholder="reps" value={set.reps} onChange={e => onChange({ ...set, reps: e.target.value })} style={S.inputStyle({ width: 60, padding: "11px 10px" })} />
+          <input type="number" inputMode="numeric" enterKeyHint="done" placeholder="reps" value={set.reps} onFocus={e => e.target.select()} onChange={e => onChange({ ...set, reps: e.target.value })} style={S.inputStyle({ width: 60, padding: "11px 10px" })} />
           {/* RPE chip */}
           <button
             onClick={() => { setShowRpe(v => !v); haptic(8); }}
             style={{
-              background: hasRpe ? `${toneColor}18` : "transparent",
-              border: `1px solid ${hasRpe ? toneColor + "66" : t.border}`,
+              background: hasChip ? `${toneColor}18` : "transparent",
+              border: `1px solid ${hasChip ? toneColor + "66" : t.border}`,
               borderRadius: 8, padding: "10px 10px", fontSize: 12, fontWeight: 700,
-              color: hasRpe ? toneColor : t.textMuted, cursor: "pointer",
+              color: hasChip ? toneColor : t.textMuted, cursor: "pointer",
               whiteSpace: "nowrap", flexShrink: 0, minHeight: 44, touchAction: "manipulation",
               transition: "all 0.15s",
             }}
           >
-            {hasRpe ? `@${rpe % 1 === 0 ? rpe : rpe.toFixed(1)}` : "RPE"}
+            {chipLabel}
           </button>
           <button onClick={onRemove} aria-label="Remove set" style={{ background: "transparent", border: "none", color: "#ff5b5b", cursor: "pointer", width: 32, height: 36, minWidth: 32, padding: 0, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8, flexShrink: 0, marginLeft: "auto", touchAction: "manipulation" }}><Icon name="x" size={14} /></button>
         </div>
@@ -1939,7 +1947,7 @@ function SetRow({ set, index, onChange, onRemove }) {
 }
 
 // ── Exercise Block ────────────────────────────────────────────────────
-function ExerciseBlock({ exercise, onChange, onRemove, workouts }) {
+function ExerciseBlock({ exercise, onChange, onRemove, workouts, effortMetric }) {
   const S = useS();
   const t = useT();
   const [coachDismissed, setCoachDismissed] = useState(false);
@@ -2013,7 +2021,7 @@ function ExerciseBlock({ exercise, onChange, onRemove, workouts }) {
       )}
 
       <div style={{ marginBottom: 8 }}>
-        {exercise.sets.map((s, i) => <SetRow key={i} set={s} index={i} onChange={s => updateSet(i, s)} onRemove={() => removeSet(i)} />)}
+        {exercise.sets.map((s, i) => <SetRow key={i} set={s} index={i} onChange={s => updateSet(i, s)} onRemove={() => removeSet(i)} effortMetric={effortMetric} />)}
       </div>
       <button onClick={addSet} style={S.ghostBtn()}><Icon name="plus" size={14} /> Add Set</button>
       <textarea
@@ -2391,7 +2399,7 @@ function VerifyEmailRow() {
   );
 }
 
-function SettingsModal({ authedUser, onClose, themePref, onThemeChoice, onEditProfile, onManageTags, onExport }) {
+function SettingsModal({ authedUser, onClose, themePref, onThemeChoice, onEditProfile, onManageTags, onExport, workoutPrefs, onWorkoutPrefs }) {
   const t = useT();
   const theme = useContext(ThemeCtx);
   const accent = "#5B9BD5";
@@ -2463,6 +2471,47 @@ function SettingsModal({ authedUser, onClose, themePref, onThemeChoice, onEditPr
             <div style={{ fontSize: 10, color: t.textMuted, marginTop: 6, textAlign: "center" }}>Following your device setting — currently {theme}.</div>
           )}
         </div>
+        {/* Fix #81/#82: Workout Preferences */}
+        {onWorkoutPrefs && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 11, color: t.textMuted, textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 700, marginBottom: 10 }}>Workout Preferences</div>
+            <div style={{ background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 12, padding: "12px 14px", marginBottom: 8 }}>
+              <div style={{ fontSize: 12, color: t.textSub, fontWeight: 600, marginBottom: 8 }}>1RM Formula</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+                {[
+                  { id: "avg",     label: "Both (avg)", sub: "Epley + Brzycki" },
+                  { id: "epley",   label: "Epley",      sub: "w × (1 + r/30)" },
+                  { id: "brzycki", label: "Brzycki",    sub: "w × 36/(37-r)" },
+                ].map(opt => {
+                  const active = (workoutPrefs?.oneRMFormula || "avg") === opt.id;
+                  return (
+                    <button key={opt.id} onClick={() => onWorkoutPrefs({ ...(workoutPrefs || {}), oneRMFormula: opt.id })} style={{ background: active ? accent : t.surface, border: `1px solid ${active ? accent : t.border}`, borderRadius: 8, padding: "8px 6px", fontSize: 11, fontWeight: 700, color: active ? "#fff" : t.textSub, cursor: "pointer", display: "flex", flexDirection: "column", gap: 2, touchAction: "manipulation" }}>
+                      <span>{opt.label}</span>
+                      <span style={{ fontSize: 9, fontWeight: 400, opacity: 0.8, fontFamily: "'Space Mono', monospace" }}>{opt.sub}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div style={{ background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 12, padding: "12px 14px" }}>
+              <div style={{ fontSize: 12, color: t.textSub, fontWeight: 600, marginBottom: 8 }}>Effort Metric</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                {[
+                  { id: "rpe", label: "RPE",  sub: "Rate of Perceived Exertion (6–10)" },
+                  { id: "rir", label: "RIR",  sub: "Reps in Reserve (0–5)" },
+                ].map(opt => {
+                  const active = (workoutPrefs?.effortMetric || "rpe") === opt.id;
+                  return (
+                    <button key={opt.id} onClick={() => onWorkoutPrefs({ ...(workoutPrefs || {}), effortMetric: opt.id })} style={{ background: active ? accent : t.surface, border: `1px solid ${active ? accent : t.border}`, borderRadius: 8, padding: "10px 8px", fontSize: 12, fontWeight: 700, color: active ? "#fff" : t.textSub, cursor: "pointer", display: "flex", flexDirection: "column", gap: 2, textAlign: "left", touchAction: "manipulation" }}>
+                      <span>{opt.label}</span>
+                      <span style={{ fontSize: 10, fontWeight: 400, opacity: 0.85 }}>{opt.sub}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
         {/* Email verification */}
         <VerifyEmailRow />
         {/* Security */}
@@ -3088,16 +3137,21 @@ function TemplateManager({ templates, onLoad, onDelete, onRename, onClose }) {
   );
 }
 
-function OneRMCalculator({ onClose }) {
+function OneRMCalculator({ onClose, formula = "avg" }) {
   const t = useT(); const S = useS();
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
+  const [showFormulaInfo, setShowFormulaInfo] = useState(false);
   const w = parseFloat(weight) || 0;
   const r = parseInt(reps) || 0;
   const valid = w > 0 && r >= 1 && r <= 15;
   const epley   = valid ? Math.round(w * (1 + r / 30)) : null;
   const brzycki = valid && r < 37 ? Math.round(w * (36 / (37 - r))) : null;
-  const best1RM = epley && brzycki ? Math.round((epley + brzycki) / 2) : (epley || brzycki || null);
+  // Fix #81: respect user's preferred formula
+  const best1RM = formula === "epley"   ? epley
+               : formula === "brzycki" ? brzycki
+               : (epley && brzycki ? Math.round((epley + brzycki) / 2) : (epley || brzycki || null));
+  const formulaLabel = formula === "epley" ? "Epley" : formula === "brzycki" ? "Brzycki" : "Epley + Brzycki avg";
   const PCTS = [100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50];
 
   return (
@@ -3112,12 +3166,12 @@ function OneRMCalculator({ onClose }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
           <div>
             <div style={{ fontSize: 11, color: t.textMuted, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>Weight (lbs)</div>
-            <input type="number" value={weight} onChange={e => setWeight(e.target.value)} placeholder="e.g. 185" inputMode="decimal" autoFocus
+            <input type="number" value={weight} onChange={e => setWeight(e.target.value)} onFocus={e => e.target.select()} placeholder="e.g. 185" inputMode="decimal" enterKeyHint="next" autoFocus
               style={{ ...S.inputStyle({ width: "100%", fontSize: 20, padding: "11px 14px", borderRadius: 12 }) }} />
           </div>
           <div>
             <div style={{ fontSize: 11, color: t.textMuted, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>Reps (1–15)</div>
-            <input type="number" value={reps} onChange={e => setReps(e.target.value)} placeholder="e.g. 5" inputMode="numeric" min="1" max="15"
+            <input type="number" value={reps} onChange={e => setReps(e.target.value)} onFocus={e => e.target.select()} placeholder="e.g. 5" inputMode="numeric" enterKeyHint="done" min="1" max="15"
               style={{ ...S.inputStyle({ width: "100%", fontSize: 20, padding: "11px 14px", borderRadius: 12 }) }} />
           </div>
         </div>
@@ -3130,13 +3184,25 @@ function OneRMCalculator({ onClose }) {
           <>
             {/* Big 1RM display */}
             <div style={{ background: `${accent}12`, border: `1px solid ${accent}33`, borderRadius: 16, padding: "18px 20px", marginBottom: 18, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 12, color: t.textMuted, marginBottom: 4 }}>Estimated 1RM</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                  <span style={{ fontSize: 12, color: t.textMuted }}>Estimated 1RM</span>
+                  <button onClick={() => setShowFormulaInfo(v => !v)} aria-label="Formula info" style={{ background: "transparent", border: `1px solid ${t.border}`, borderRadius: "50%", width: 16, height: 16, padding: 0, color: t.textMuted, fontSize: 10, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>ⓘ</button>
+                </div>
                 <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 44, color: accent, lineHeight: 1 }}>{best1RM} <span style={{ fontSize: 16, color: t.textMuted }}>lbs</span></div>
-                <div style={{ fontSize: 11, color: t.textMuted, marginTop: 4 }}>Average of Epley ({epley}) & Brzycki ({brzycki})</div>
+                <div style={{ fontSize: 11, color: t.textMuted, marginTop: 4 }}>Formula: {formulaLabel} · Epley {epley} · Brzycki {brzycki}</div>
               </div>
               <div style={{ fontSize: 48, lineHeight: 1 }}>🏆</div>
             </div>
+            {/* Fix #81: formula explanation panel */}
+            {showFormulaInfo && (
+              <div style={{ background: t.surfaceHigh, border: `1px solid ${t.border}`, borderRadius: 12, padding: "12px 14px", marginBottom: 18, fontSize: 12, color: t.textSub, lineHeight: 1.6 }}>
+                <div style={{ fontWeight: 700, color: t.text, marginBottom: 4 }}>About these estimates</div>
+                <div style={{ marginBottom: 6 }}><span style={{ fontFamily: "'Space Mono', monospace", color: t.text }}>Epley: w × (1 + r/30)</span> — widely used, tends to slightly over-estimate at higher reps.</div>
+                <div style={{ marginBottom: 6 }}><span style={{ fontFamily: "'Space Mono', monospace", color: t.text }}>Brzycki: w × 36/(37 − r)</span> — slightly conservative at higher reps. Breaks down past 36 reps.</div>
+                <div>Pick your preferred formula in <span style={{ color: accent, fontWeight: 600 }}>Profile → Settings → Workout Preferences</span>.</div>
+              </div>
+            )}
 
             {/* Percentage table */}
             <div style={{ fontSize: 11, color: t.textMuted, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 10 }}>Training Percentages</div>
@@ -4382,6 +4448,7 @@ export default function App() {
 
           {workout && workout.exercises.map((ex, i) => (
             <ExerciseBlock key={i} exercise={ex} workouts={data.workouts}
+              effortMetric={(data.workoutPrefs && data.workoutPrefs.effortMetric) || "rpe"}
               onChange={updated => { const exercises = [...workout.exercises]; exercises[i] = updated; setWorkout({ ...workout, exercises }); }}
               onRemove={() => setWorkout({ ...workout, exercises: workout.exercises.filter((_, j) => j !== i) })}
             />
@@ -4995,10 +5062,19 @@ export default function App() {
       {/* ── HELP MODAL ───────────────────── */}
       {helpPage && <HelpModal page={helpPage} onClose={() => setHelpPage(null)} onReplayTour={() => { setHelpPage(null); setShowTour(true); }} />}
       {showPlateCalc && <PlateCalculator onClose={() => setShowPlateCalc(false)} />}
-      {show1RM && <OneRMCalculator onClose={() => setShow1RM(false)} />}
+      {show1RM && <OneRMCalculator onClose={() => setShow1RM(false)} formula={(data.workoutPrefs && data.workoutPrefs.oneRMFormula) || "avg"} />}
       {showSaveTemplate && workout && <SaveTemplateSheet exercises={workout.exercises} existingTemplates={templates} onSave={saveTemplate} onClose={() => setShowSaveTemplate(false)} />}
       {showTemplateManager && <TemplateManager templates={templates} onLoad={loadTemplate} onDelete={deleteTemplate} onRename={renameTemplate} onClose={() => setShowTemplateManager(false)} />}
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} themePref={themePref} onThemeChoice={setThemeChoice} onEditProfile={() => { setShowSettings(false); setProfileDraft({ ...(data.profile || {}) }); setEditingProfile(true); setView("profile"); }} onManageTags={() => { setShowSettings(false); setShowManageTags(true); }} onExport={() => { setShowSettings(false); exportCSV(); }} />}
+      {showSettings && <SettingsModal
+        onClose={() => setShowSettings(false)}
+        themePref={themePref}
+        onThemeChoice={setThemeChoice}
+        onEditProfile={() => { setShowSettings(false); setProfileDraft({ ...(data.profile || {}) }); setEditingProfile(true); setView("profile"); }}
+        onManageTags={() => { setShowSettings(false); setShowManageTags(true); }}
+        onExport={() => { setShowSettings(false); exportCSV(); }}
+        workoutPrefs={data.workoutPrefs || {}}
+        onWorkoutPrefs={(next) => save({ ...data, workoutPrefs: next })}
+      />}
       {showNotifs && <NotificationsModal notifications={notifications} onClose={() => setShowNotifs(false)} onMarkAllRead={markAllNotifsRead} onClearAll={clearAllNotifs} onToggleRead={toggleNotifRead} />}
       {showTools && <ToolsMenu onClose={() => setShowTools(false)} on1RM={() => setShow1RM(true)} onPlates={() => setShowPlateCalc(true)} />}
       {showManageTags && <ManageTagsModal customTags={data.customTags} onClose={() => setShowManageTags(false)} onChange={(next) => save({ ...data, customTags: next })} />}
