@@ -147,7 +147,7 @@ const makeStyles = (t) => ({
 // v2.3.5  2026-04-18  Renamed all gymtrack references to barbelllabs across project
 // v2.4.0  2026-04-18  Weekly volume bar chart in Progress tab; bodyweight log + mini chart on Home tab
 // v2.4.1  2026-04-18  Bodyweight chart upgraded to full interactive progression chart; widget moved to Profile tab
-const APP_VERSION = "2.4.24";
+const APP_VERSION = "2.4.25";
 const BUILD_DATE  = "2026-04-24";
 
 function useStorage(uid) {
@@ -1269,8 +1269,11 @@ function DualLineChart({ points, lineColor = WEIGHT_COLOR }) {
     ? `M${toX(0)},${toYw(points[0].value)} ${points.slice(1).map((p, i) => `L${toX(i+1)},${toYw(p.value)}`).join(" ")} L${toX(points.length-1)},${padT+plotH} L${toX(0)},${padT+plotH} Z`
     : "";
 
-  const yTickVals = Array.from({ length: 4 }, (_, i) => wMin + (wRange / 3) * i);
-  const rTickVals = hasReps ? Array.from({ length: 4 }, (_, i) => Math.round(rMin + (rRange / 3) * i)) : [];
+  // Fix #34: reduce tick count when range is small so labels don't overlap
+  const yTickCount = wRange < 10 ? 3 : 4;
+  const yTickVals = Array.from({ length: yTickCount }, (_, i) => wMin + (wRange / (yTickCount - 1)) * i);
+  const rTickCount = rRange < 5 ? 3 : 4;
+  const rTickVals = hasReps ? Array.from({ length: rTickCount }, (_, i) => Math.round(rMin + (rRange / (rTickCount - 1)) * i)) : [];
   const wGradId = `wgrad-${lineColor.replace("#", "")}`;
 
   // ── Touch / mouse interaction ──────────────────────────────────────
@@ -1349,6 +1352,10 @@ function DualLineChart({ points, lineColor = WEIGHT_COLOR }) {
           {hasReps && rTickVals.map((v, i) => (
             <text key={i} x={W-padR+5} y={toYr(v)+4} textAnchor="start" fontSize="9" fill={REPS_COLOR} opacity="0.8">{v}</text>
           ))}
+
+          {/* Fix #34: axis labels on the axes (replaces footer legend). X-axis date labels below each dot already convey "date". */}
+          <text x={padL-5} y={padT-14} textAnchor="end" fontSize="9" fontWeight="700" fill={WEIGHT_COLOR} letterSpacing="0.5">WEIGHT (LBS)</text>
+          {hasReps && <text x={W-padR+5} y={padT-14} textAnchor="start" fontSize="9" fontWeight="700" fill={REPS_COLOR} letterSpacing="0.5">REPS</text>}
 
           {/* Area fill */}
           {wAreaPath && <path d={wAreaPath} fill={`url(#${wGradId})`} />}
@@ -1432,19 +1439,6 @@ function DualLineChart({ points, lineColor = WEIGHT_COLOR }) {
         </svg>
       </div>
 
-      {/* Legend */}
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 20, marginTop: 8, fontSize: 11, color: t.textMuted }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <svg width="20" height="8"><line x1="0" y1="4" x2="20" y2="4" stroke={WEIGHT_COLOR} strokeWidth="2.5" /></svg>
-          <span style={{ color: WEIGHT_COLOR, fontWeight: 600 }}>Weight (lbs)</span>
-        </span>
-        {hasReps && (
-          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <svg width="20" height="8"><line x1="0" y1="4" x2="20" y2="4" stroke={REPS_COLOR} strokeWidth="2" strokeDasharray="5,3" /></svg>
-            <span style={{ color: REPS_COLOR, fontWeight: 600 }}>Reps</span>
-          </span>
-        )}
-      </div>
     </div>
   );
 }
@@ -1717,7 +1711,7 @@ function slotCfg(name) {
   return { label, color, borderColor: color + "33", bgColor: color + "14" };
 }
 
-function Big3PRs({ workouts, profile, onSave }) {
+function Big3PRs({ workouts, profile, onSave, onLogExercise }) {
   const t = useT();
   const big3 = (profile?.big3?.length === 3) ? profile.big3 : DEFAULT_BIG3;
 
@@ -1821,15 +1815,16 @@ function Big3PRs({ workouts, profile, onSave }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {prs.map(({ name, pr, date }) => {
             const c = slotCfg(name); const isTop = pr && pr === maxPR;
+            const canLog = !pr && onLogExercise;
             return (
-              <div key={name} style={{ background: c.bgColor, border: `1px solid ${pr ? c.borderColor : t.border}`, borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, position: "relative", overflow: "hidden" }}>
+              <div key={name} onClick={canLog ? () => onLogExercise(name) : undefined} role={canLog ? "button" : undefined} style={{ background: c.bgColor, border: `1px solid ${pr ? c.borderColor : t.border}`, borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, position: "relative", overflow: "hidden", cursor: canLog ? "pointer" : "default", transition: "transform 0.1s" }}>
                 {pr && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: c.color, borderRadius: "14px 0 0 14px" }} />}
                 <div style={{ width: 46, height: 46, borderRadius: 12, background: `${c.color}18`, border: `1px solid ${c.color}40`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: "'Bebas Neue', cursive", fontSize: 15, letterSpacing: 1, color: c.color }}>{c.label}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12, color: t.textMuted, marginBottom: 2, textTransform: "uppercase", letterSpacing: 0.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
                   {pr
                     ? <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}><span style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 32, letterSpacing: 1, color: c.color, lineHeight: 1 }}>{pr}</span><span style={{ color: t.textMuted, fontSize: 14 }}>lbs</span></div>
-                    : <div style={{ color: t.textMuted, fontSize: 14, marginTop: 2 }}>Not logged yet</div>
+                    : <div style={{ color: canLog ? accent : t.textMuted, fontSize: 13, marginTop: 2, fontWeight: canLog ? 600 : 400 }}>{canLog ? "Tap to log →" : "Not logged yet"}</div>
                   }
                   {date && <div style={{ fontSize: 11, color: t.textMuted, marginTop: 2 }}>Last: {date}</div>}
                 </div>
@@ -4599,7 +4594,16 @@ export default function App() {
             <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 32, letterSpacing: 2, lineHeight: 1 }}>YOUR <span style={{ color: accent }}>PROGRESS</span></div>
             <HelpBtn page="progress" onOpen={() => setHelpPage("progress")} />
           </div>
-          <Big3PRs workouts={data.workouts} profile={profile} onSave={(big3) => saveProfile({ big3 })} />
+          <Big3PRs
+            workouts={data.workouts}
+            profile={profile}
+            onSave={(big3) => saveProfile({ big3 })}
+            onLogExercise={(name) => {
+              if (!workout) setWorkout({ date: todayISO(), startTime: Date.now(), exercises: [] });
+              addExercise(name);
+              setView("log");
+            }}
+          />
           {data.workouts.length > 0 && <MuscleBreakdown workouts={data.workouts} />}
           <div style={{ borderTop: `1px solid ${t.border}`, margin: "22px 0 18px" }} />
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
@@ -4654,6 +4658,7 @@ export default function App() {
                     return best;
                   }, pts[0]);
                   const gain = pts[pts.length - 1].value - pts[0].value;
+                  const repsGain = (pts[pts.length - 1].reps || 0) - (pts[0].reps || 0);
                   const lc = palette[idx % palette.length];
                   const best1RM = data.workouts
                     .flatMap(w => w.exercises.filter(e => e.name === name).flatMap(e => e.sets))
@@ -4681,7 +4686,14 @@ export default function App() {
                       <LineChart points={pts} lineColor={lc} />
                       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 16, marginTop: 2, fontSize: 10, color: t.textMuted }}>
                         <span style={{ letterSpacing: 0.5 }}>← Sessions →</span>
-                        <span style={{ color: gain > 0 ? "#5bb85b" : gain < 0 ? "#d55b5b" : t.textMuted, fontWeight: 700 }}>{gain > 0 ? "▲" : gain < 0 ? "▼" : "—"} {Math.abs(gain)} lbs</span>
+                        <span style={{ color: gain > 0 ? "#5bb85b" : gain < 0 ? "#d55b5b" : t.textMuted, fontWeight: 700 }}>
+                          {gain > 0 ? "▲" : gain < 0 ? "▼" : "—"} {Math.abs(gain)} lbs
+                          {repsGain !== 0 && (
+                            <span style={{ color: repsGain > 0 ? "#5bb85b" : "#d55b5b", marginLeft: 4 }}>
+                              · {repsGain > 0 ? "+" : ""}{repsGain} reps
+                            </span>
+                          )}
+                        </span>
                       </div>
                     </div>
                   );
