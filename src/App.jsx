@@ -147,8 +147,8 @@ const makeStyles = (t) => ({
 // v2.3.5  2026-04-18  Renamed all gymtrack references to barbelllabs across project
 // v2.4.0  2026-04-18  Weekly volume bar chart in Progress tab; bodyweight log + mini chart on Home tab
 // v2.4.1  2026-04-18  Bodyweight chart upgraded to full interactive progression chart; widget moved to Profile tab
-const APP_VERSION = "2.4.23";
-const BUILD_DATE  = "2026-04-23";
+const APP_VERSION = "2.4.24";
+const BUILD_DATE  = "2026-04-24";
 
 function useStorage(uid) {
   const [data, setData] = useState({ workouts: [], bodyweight: [] });
@@ -1226,6 +1226,21 @@ function DualLineChart({ points, lineColor = WEIGHT_COLOR }) {
       Log at least one session to see this chart
     </div>
   );
+
+  // Fix #33: single data point has no meaningful Y-axis, so show a summary tile instead of a broken chart
+  if (points.length === 1) {
+    const p = points[0];
+    return (
+      <div style={{ padding: "24px 16px", textAlign: "center", background: `${lineColor}0a`, border: `1px solid ${lineColor}26`, borderRadius: 14 }}>
+        <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 32, letterSpacing: 1, color: lineColor, lineHeight: 1, marginBottom: 6 }}>
+          {p.value}{p.reps ? <span style={{ color: t.textMuted, fontSize: 18, marginLeft: 6 }}>× {p.reps}</span> : null}
+        </div>
+        <div style={{ color: t.textMuted, fontSize: 12, lineHeight: 1.5 }}>
+          Baseline logged · log another session to unlock progression
+        </div>
+      </div>
+    );
+  }
 
   const W = 340, H = 170, padL = 38, padR = 38, padT = 36, padB = 32;
   const plotW = W - padL - padR, plotH = H - padT - padB;
