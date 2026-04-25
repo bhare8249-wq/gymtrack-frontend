@@ -178,11 +178,15 @@ const makeStyles = (t) => ({
 // v2.3.5  2026-04-18  Renamed all gymtrack references to barbelllabs across project
 // v2.4.0  2026-04-18  Weekly volume bar chart in Progress tab; bodyweight log + mini chart on Home tab
 // v2.4.1  2026-04-18  Bodyweight chart upgraded to full interactive progression chart; widget moved to Profile tab
-const APP_VERSION = "2.4.43";
+const APP_VERSION = "2.4.44";
 const BUILD_DATE  = "2026-04-24";
 
 function useStorage(uid) {
   const [data, setData] = useState({ workouts: [], bodyweight: [] });
+  // Fix #69: optimistic UI — local state updates immediately, Firestore write happens in
+  // background. If the write fails, expose the error + a retry handle so the UI can
+  // surface a non-blocking banner instead of silently losing the user's work.
+  const [saveError, setSaveError] = useState(null);
 
   useEffect(() => {
     if (!uid) { setData({ workouts: [], bodyweight: [] }); return; }
@@ -194,12 +198,24 @@ function useStorage(uid) {
     return unsub;
   }, [uid]);
 
-  const save = (next) => {
+  const save = (next, opts = {}) => {
     setData(next);
-    if (uid) setDoc(doc(db, "users", uid), next).catch(console.error);
+    if (!uid) return;
+    setDoc(doc(db, "users", uid), next).then(() => {
+      // Successful write — clear any prior error so the banner goes away.
+      setSaveError(prev => (prev ? null : prev));
+    }).catch(err => {
+      console.error("[useStorage] Firestore write failed:", err);
+      setSaveError({
+        message: opts.errorContext || "Couldn't sync your changes",
+        retry: () => save(next, opts),
+        dismiss: () => setSaveError(null),
+        timestamp: Date.now(),
+      });
+    });
   };
 
-  return [data, save];
+  return [data, save, saveError];
 }
 
 // ── Admin ─────────────────────────────────────────────────────────────
@@ -4665,7 +4681,7 @@ export default function App() {
   }, []);
 
   const authedUser = firebaseUser?.displayName || firebaseUser?.email?.split("@")[0] || "";
-  const [data, save] = useStorage(firebaseUser?.uid);
+  const [data, save, saveError] = useStorage(firebaseUser?.uid);
   const [view, setView] = useState("home");
   const [viewKey, setViewKey] = useState(0);
   const [viewDir, setViewDir] = useState(1);
@@ -5005,7 +5021,7 @@ export default function App() {
     const cleaned = { ...workout, labels, label: labels[0] || null, duration: Math.round((Date.now() - workout.startTime) / 60000), exercises: cleanedExercises };
     const prev = data.workouts;
     const notifUpdate = computeWorkoutNotifications(data, cleaned, prev);
-    save({ ...data, workouts: [cleaned, ...data.workouts], ...(notifUpdate || {}) });
+    save({ ...data, workouts: [cleaned, ...data.workouts], ...(notifUpdate || {}) }, { errorContext: "Couldn't sync your workout" });
     haptic([0, 60, 30, 60, 30, 120]);
     playComplete();
     setWorkout(null); setView("home");
@@ -6116,6 +6132,16 @@ export default function App() {
       {profileSavedFlash && (
         <div style={{ position: "fixed", bottom: "calc(92px + env(safe-area-inset-bottom, 0px))", left: "50%", transform: "translateX(-50%)", zIndex: 2100, background: "rgba(91,184,91,0.18)", border: "1px solid rgba(91,184,91,0.45)", borderRadius: 12, padding: "10px 18px", color: "#5bb85b", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 32px rgba(0,0,0,0.35)", pointerEvents: "none", animation: "bl-card-in 0.25s ease both" }}>
           ✓ Profile saved
+        </div>
+      )}
+      {/* Fix #69: Sync error banner — appears when a Firestore write fails so the user
+          can retry instead of losing the change silently. Auto-clears on next successful save. */}
+      {saveError && (
+        <div role="alert" aria-live="polite" style={{ position: "fixed", bottom: "calc(92px + env(safe-area-inset-bottom, 0px))", left: 12, right: 12, zIndex: 2150, maxWidth: 396, marginLeft: "auto", marginRight: "auto", background: "rgba(217,107,122,0.18)", border: "1px solid rgba(217,107,122,0.55)", borderRadius: 12, padding: "12px 14px", color: "#F5C7CD", fontSize: 13, fontWeight: 600, boxShadow: "0 8px 32px rgba(0,0,0,0.45)", animation: "bl-card-in 0.25s ease both", display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 16, flexShrink: 0 }}>⚠</span>
+          <span style={{ flex: 1, lineHeight: 1.35 }}>{saveError.message} — check connection and try again.</span>
+          <button onClick={saveError.retry} style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", flexShrink: 0, minHeight: 32 }}>Retry</button>
+          <button onClick={saveError.dismiss} aria-label="Dismiss" style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.6)", fontSize: 18, cursor: "pointer", padding: "0 4px", flexShrink: 0, lineHeight: 1 }}>×</button>
         </div>
       )}
       {showHistoryMenu && <HistoryMenu
