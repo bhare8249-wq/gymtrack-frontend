@@ -179,7 +179,7 @@ const makeStyles = (t) => ({
 // v2.3.5  2026-04-18  Renamed all gymtrack references to barbelllabs across project
 // v2.4.0  2026-04-18  Weekly volume bar chart in Progress tab; bodyweight log + mini chart on Home tab
 // v2.4.1  2026-04-18  Bodyweight chart upgraded to full interactive progression chart; widget moved to Profile tab
-const APP_VERSION = "2.4.45";
+const APP_VERSION = "2.4.46";
 const BUILD_DATE  = "2026-04-25";
 
 function useStorage(uid) {
@@ -217,6 +217,24 @@ function useStorage(uid) {
   };
 
   return [data, save, saveError];
+}
+
+// Tracks browser online/offline state. Used by the offline indicator banner so users
+// know writes are being queued locally rather than failing silently. Firestore's offline
+// persistence already handles the actual sync — this hook is purely for user awareness.
+function useOnlineStatus() {
+  const [online, setOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
+  useEffect(() => {
+    const goOnline = () => setOnline(true);
+    const goOffline = () => setOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
+  return online;
 }
 
 // ── Admin ─────────────────────────────────────────────────────────────
@@ -4460,6 +4478,7 @@ export default function App() {
 
   const authedUser = firebaseUser?.displayName || firebaseUser?.email?.split("@")[0] || "";
   const [data, save, saveError] = useStorage(firebaseUser?.uid);
+  const isOnline = useOnlineStatus();
   const [view, setView] = useState("home");
   const [viewKey, setViewKey] = useState(0);
   const [viewDir, setViewDir] = useState(1);
@@ -4625,6 +4644,7 @@ export default function App() {
       @keyframes bl-slide-r { from { opacity:0; transform:translateX(22px); } to { opacity:1; transform:translateX(0); } }
       @keyframes bl-slide-l { from { opacity:0; transform:translateX(-22px); } to { opacity:1; transform:translateX(0); } }
       @keyframes bl-card-in { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+      @keyframes bl-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
     `;
     document.head.appendChild(style);
   }, []);
@@ -5910,6 +5930,15 @@ export default function App() {
       {profileSavedFlash && (
         <div style={{ position: "fixed", bottom: "calc(92px + env(safe-area-inset-bottom, 0px))", left: "50%", transform: "translateX(-50%)", zIndex: 2100, background: "rgba(91,184,91,0.18)", border: "1px solid rgba(91,184,91,0.45)", borderRadius: 12, padding: "10px 18px", color: "#5bb85b", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 32px rgba(0,0,0,0.35)", pointerEvents: "none", animation: "bl-card-in 0.25s ease both" }}>
           ✓ Profile saved
+        </div>
+      )}
+      {/* Offline indicator — purely informational. Firestore's offline persistence already
+          queues writes locally and syncs them when the connection returns; this banner just
+          tells the user that's what's happening so silence isn't read as failure. */}
+      {!isOnline && (
+        <div role="status" aria-live="polite" style={{ position: "fixed", top: "calc(env(safe-area-inset-top, 0px))", left: 0, right: 0, zIndex: 2200, background: "rgba(232,182,76,0.18)", borderBottom: "1px solid rgba(232,182,76,0.45)", color: "#E8B64C", fontSize: 12, fontWeight: 600, padding: "7px 16px", textAlign: "center", letterSpacing: 0.3, backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", animation: "bl-card-in 0.25s ease both" }}>
+          <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#E8B64C", marginRight: 8, verticalAlign: "middle", animation: "bl-pulse 2s ease-in-out infinite" }} />
+          You're offline · changes will sync when reconnected
         </div>
       )}
       {/* Fix #69: Sync error banner — appears when a Firestore write fails so the user
