@@ -18,6 +18,7 @@ import {
   deleteUser,
 } from "firebase/auth";
 import { HELP_CONTENT } from "./helpContent";
+import { GYM_BIBLE } from "./exerciseDatabase";
 
 // ── Theme ─────────────────────────────────────────────────────────────
 const ThemeCtx = createContext("dark");
@@ -178,11 +179,15 @@ const makeStyles = (t) => ({
 // v2.3.5  2026-04-18  Renamed all gymtrack references to barbelllabs across project
 // v2.4.0  2026-04-18  Weekly volume bar chart in Progress tab; bodyweight log + mini chart on Home tab
 // v2.4.1  2026-04-18  Bodyweight chart upgraded to full interactive progression chart; widget moved to Profile tab
-const APP_VERSION = "2.4.43";
-const BUILD_DATE  = "2026-04-24";
+const APP_VERSION = "2.4.46";
+const BUILD_DATE  = "2026-04-25";
 
 function useStorage(uid) {
   const [data, setData] = useState({ workouts: [], bodyweight: [] });
+  // Fix #69: optimistic UI — local state updates immediately, Firestore write happens in
+  // background. If the write fails, expose the error + a retry handle so the UI can
+  // surface a non-blocking banner instead of silently losing the user's work.
+  const [saveError, setSaveError] = useState(null);
 
   useEffect(() => {
     if (!uid) { setData({ workouts: [], bodyweight: [] }); return; }
@@ -194,12 +199,42 @@ function useStorage(uid) {
     return unsub;
   }, [uid]);
 
-  const save = (next) => {
+  const save = (next, opts = {}) => {
     setData(next);
-    if (uid) setDoc(doc(db, "users", uid), next).catch(console.error);
+    if (!uid) return;
+    setDoc(doc(db, "users", uid), next).then(() => {
+      // Successful write — clear any prior error so the banner goes away.
+      setSaveError(prev => (prev ? null : prev));
+    }).catch(err => {
+      console.error("[useStorage] Firestore write failed:", err);
+      setSaveError({
+        message: opts.errorContext || "Couldn't sync your changes",
+        retry: () => save(next, opts),
+        dismiss: () => setSaveError(null),
+        timestamp: Date.now(),
+      });
+    });
   };
 
-  return [data, save];
+  return [data, save, saveError];
+}
+
+// Tracks browser online/offline state. Used by the offline indicator banner so users
+// know writes are being queued locally rather than failing silently. Firestore's offline
+// persistence already handles the actual sync — this hook is purely for user awareness.
+function useOnlineStatus() {
+  const [online, setOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
+  useEffect(() => {
+    const goOnline = () => setOnline(true);
+    const goOffline = () => setOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
+  return online;
 }
 
 // ── Admin ─────────────────────────────────────────────────────────────
@@ -211,231 +246,7 @@ const isAdminUser = () => false;
 })();
 
 
-const GYM_BIBLE = [
-  // CHEST
-  { name: "Barbell Bench Press", cat: "chest", equip: "barbell", level: "intermediate", muscles: "Pectorals, Triceps, Front Delts" },
-  { name: "Incline Barbell Bench Press", cat: "chest", equip: "barbell", level: "intermediate", muscles: "Upper Pecs, Triceps, Front Delts" },
-  { name: "Decline Barbell Bench Press", cat: "chest", equip: "barbell", level: "intermediate", muscles: "Lower Pecs, Triceps" },
-  { name: "Close-Grip Bench Press", cat: "chest", equip: "barbell", level: "intermediate", muscles: "Triceps, Inner Pecs" },
-  { name: "Dumbbell Bench Press", cat: "chest", equip: "dumbbell", level: "beginner", muscles: "Pectorals, Triceps, Front Delts" },
-  { name: "Incline Dumbbell Press", cat: "chest", equip: "dumbbell", level: "beginner", muscles: "Upper Pecs, Triceps" },
-  { name: "Decline Dumbbell Press", cat: "chest", equip: "dumbbell", level: "beginner", muscles: "Lower Pecs, Triceps" },
-  { name: "Dumbbell Flye", cat: "chest", equip: "dumbbell", level: "beginner", muscles: "Pectorals (stretch emphasis)" },
-  { name: "Incline Dumbbell Flye", cat: "chest", equip: "dumbbell", level: "beginner", muscles: "Upper Pecs" },
-  { name: "Dumbbell Pullover", cat: "chest", equip: "dumbbell", level: "intermediate", muscles: "Pecs, Lats, Serratus" },
-  { name: "Cable Crossover", cat: "chest", equip: "cable", level: "beginner", muscles: "Pectorals (contraction emphasis)" },
-  { name: "High-to-Low Cable Flye", cat: "chest", equip: "cable", level: "beginner", muscles: "Lower Pecs" },
-  { name: "Low-to-High Cable Flye", cat: "chest", equip: "cable", level: "beginner", muscles: "Upper Pecs" },
-  { name: "Single-Arm Cable Press", cat: "chest", equip: "cable", level: "intermediate", muscles: "Pecs, Core Stability" },
-  { name: "Chest Press Machine", cat: "chest", equip: "machine", level: "beginner", muscles: "Pectorals, Triceps" },
-  { name: "Incline Chest Press Machine", cat: "chest", equip: "machine", level: "beginner", muscles: "Upper Pecs, Triceps" },
-  { name: "Pec Deck / Butterfly Machine", cat: "chest", equip: "machine", level: "beginner", muscles: "Pectorals" },
-  { name: "Smith Machine Bench Press", cat: "chest", equip: "machine", level: "beginner", muscles: "Pectorals, Triceps" },
-  { name: "Smith Machine Incline Press", cat: "chest", equip: "machine", level: "beginner", muscles: "Upper Pecs, Triceps" },
-  { name: "Push-Up", cat: "chest", equip: "bodyweight", level: "beginner", muscles: "Pecs, Triceps, Core" },
-  { name: "Wide-Grip Push-Up", cat: "chest", equip: "bodyweight", level: "beginner", muscles: "Outer Pecs" },
-  { name: "Diamond Push-Up", cat: "chest", equip: "bodyweight", level: "intermediate", muscles: "Triceps, Inner Pecs" },
-  { name: "Decline Push-Up", cat: "chest", equip: "bodyweight", level: "intermediate", muscles: "Upper Pecs" },
-  { name: "Incline Push-Up", cat: "chest", equip: "bodyweight", level: "beginner", muscles: "Lower Pecs" },
-  { name: "Plyometric (Clap) Push-Up", cat: "chest", equip: "bodyweight", level: "advanced", muscles: "Explosive Pecs, Triceps" },
-  { name: "Chest Dips", cat: "chest", equip: "bodyweight", level: "intermediate", muscles: "Lower Pecs, Triceps" },
-  { name: "Ring Push-Up", cat: "chest", equip: "other", level: "advanced", muscles: "Pecs, Stability Muscles" },
-  // BACK
-  { name: "Conventional Deadlift", cat: "back", equip: "barbell", level: "advanced", muscles: "Erectors, Glutes, Hamstrings, Traps" },
-  { name: "Sumo Deadlift", cat: "back", equip: "barbell", level: "advanced", muscles: "Glutes, Inner Thighs, Lower Back" },
-  { name: "Romanian Deadlift", cat: "back", equip: "barbell", level: "intermediate", muscles: "Hamstrings, Glutes, Lower Back" },
-  { name: "Barbell Row (Bent-Over)", cat: "back", equip: "barbell", level: "intermediate", muscles: "Lats, Rhomboids, Traps, Biceps" },
-  { name: "Pendlay Row", cat: "back", equip: "barbell", level: "advanced", muscles: "Mid-Back, Lats, Traps" },
-  { name: "T-Bar Row", cat: "back", equip: "barbell", level: "intermediate", muscles: "Lats, Rhomboids, Traps" },
-  { name: "Good Morning", cat: "back", equip: "barbell", level: "intermediate", muscles: "Hamstrings, Erectors, Glutes" },
-  { name: "Barbell Shrug", cat: "back", equip: "barbell", level: "beginner", muscles: "Upper Traps" },
-  { name: "Dumbbell Row (One-Arm)", cat: "back", equip: "dumbbell", level: "beginner", muscles: "Lats, Rhomboids, Rear Delts" },
-  { name: "Dumbbell Romanian Deadlift", cat: "back", equip: "dumbbell", level: "beginner", muscles: "Hamstrings, Glutes, Lower Back" },
-  { name: "Renegade Row", cat: "back", equip: "dumbbell", level: "intermediate", muscles: "Lats, Core, Triceps" },
-  { name: "Dumbbell Shrug", cat: "back", equip: "dumbbell", level: "beginner", muscles: "Upper Traps" },
-  { name: "Dumbbell Pullover", cat: "back", equip: "dumbbell", level: "intermediate", muscles: "Lats, Chest, Serratus" },
-  { name: "Lat Pulldown (Wide Grip)", cat: "back", equip: "machine", level: "beginner", muscles: "Lats, Biceps, Rhomboids" },
-  { name: "Lat Pulldown (Close Grip)", cat: "back", equip: "machine", level: "beginner", muscles: "Lats (thickness), Biceps" },
-  { name: "Lat Pulldown (Underhand)", cat: "back", equip: "machine", level: "beginner", muscles: "Lats, Biceps" },
-  { name: "Seated Cable Row (Close Grip)", cat: "back", equip: "cable", level: "beginner", muscles: "Mid-Back, Lats, Biceps" },
-  { name: "Seated Cable Row (Wide Grip)", cat: "back", equip: "cable", level: "beginner", muscles: "Upper Back, Rear Delts" },
-  { name: "Single-Arm Cable Row", cat: "back", equip: "cable", level: "beginner", muscles: "Unilateral Lats, Rhomboids" },
-  { name: "Straight-Arm Cable Pulldown", cat: "back", equip: "cable", level: "intermediate", muscles: "Lats, Teres Major" },
-  { name: "Cable Pull-Through", cat: "back", equip: "cable", level: "beginner", muscles: "Hamstrings, Glutes, Lower Back" },
-  { name: "Seated Row Machine", cat: "back", equip: "machine", level: "beginner", muscles: "Mid-Back, Rhomboids" },
-  { name: "Chest-Supported Row Machine", cat: "back", equip: "machine", level: "beginner", muscles: "Rhomboids, Mid-Traps" },
-  { name: "Back Extension Machine", cat: "back", equip: "machine", level: "beginner", muscles: "Erectors, Glutes" },
-  { name: "Pull-Up (Overhand)", cat: "back", equip: "bodyweight", level: "advanced", muscles: "Lats, Biceps, Rear Delts" },
-  { name: "Chin-Up (Underhand)", cat: "back", equip: "bodyweight", level: "intermediate", muscles: "Lats, Biceps" },
-  { name: "Neutral-Grip Pull-Up", cat: "back", equip: "bodyweight", level: "intermediate", muscles: "Lats, Brachialis" },
-  { name: "Assisted Pull-Up Machine", cat: "back", equip: "machine", level: "beginner", muscles: "Lats, Biceps" },
-  { name: "Inverted Row", cat: "back", equip: "bodyweight", level: "beginner", muscles: "Mid-Back, Rhomboids, Biceps" },
-  { name: "Back Extension (Roman Chair)", cat: "back", equip: "bodyweight", level: "beginner", muscles: "Erectors, Glutes" },
-  // SHOULDERS
-  { name: "Barbell Overhead Press (Standing)", cat: "shoulders", equip: "barbell", level: "intermediate", muscles: "All Deltoids, Traps, Triceps, Core" },
-  { name: "Barbell Overhead Press (Seated)", cat: "shoulders", equip: "barbell", level: "beginner", muscles: "All Deltoids, Traps, Triceps" },
-  { name: "Push Press", cat: "shoulders", equip: "barbell", level: "advanced", muscles: "Deltoids, Legs, Triceps" },
-  { name: "Barbell Upright Row", cat: "shoulders", equip: "barbell", level: "intermediate", muscles: "Lateral Delts, Traps" },
-  { name: "Dumbbell Overhead Press", cat: "shoulders", equip: "dumbbell", level: "beginner", muscles: "All Deltoids, Traps" },
-  { name: "Arnold Press", cat: "shoulders", equip: "dumbbell", level: "intermediate", muscles: "All Deltoids (full rotation)" },
-  { name: "Lateral Raise", cat: "shoulders", equip: "dumbbell", level: "beginner", muscles: "Lateral Deltoid" },
-  { name: "Front Raise", cat: "shoulders", equip: "dumbbell", level: "beginner", muscles: "Anterior Deltoid" },
-  { name: "Bent-Over Rear Delt Raise", cat: "shoulders", equip: "dumbbell", level: "beginner", muscles: "Rear Deltoid, Rhomboids" },
-  { name: "Dumbbell Upright Row", cat: "shoulders", equip: "dumbbell", level: "beginner", muscles: "Lateral Delts, Traps" },
-  { name: "Cable Lateral Raise", cat: "shoulders", equip: "cable", level: "beginner", muscles: "Lateral Deltoid (constant tension)" },
-  { name: "Face Pull", cat: "shoulders", equip: "cable", level: "beginner", muscles: "Rear Delts, Rotator Cuff, Traps" },
-  { name: "Cable Front Raise", cat: "shoulders", equip: "cable", level: "beginner", muscles: "Anterior Deltoid" },
-  { name: "Cable Upright Row", cat: "shoulders", equip: "cable", level: "intermediate", muscles: "Lateral Delts, Traps" },
-  { name: "Shoulder Press Machine", cat: "shoulders", equip: "machine", level: "beginner", muscles: "Deltoids, Triceps" },
-  { name: "Lateral Raise Machine", cat: "shoulders", equip: "machine", level: "beginner", muscles: "Lateral Deltoid" },
-  { name: "Rear Delt Flye Machine", cat: "shoulders", equip: "machine", level: "beginner", muscles: "Rear Deltoid" },
-  { name: "Smith Machine OHP", cat: "shoulders", equip: "machine", level: "beginner", muscles: "Deltoids, Triceps" },
-  { name: "Pike Push-Up", cat: "shoulders", equip: "bodyweight", level: "intermediate", muscles: "Anterior Delts, Triceps" },
-  { name: "Handstand Push-Up", cat: "shoulders", equip: "bodyweight", level: "advanced", muscles: "All Deltoids, Triceps, Traps" },
-  { name: "Resistance Band Lateral Raise", cat: "shoulders", equip: "other", level: "beginner", muscles: "Lateral Deltoid" },
-  // ARMS
-  { name: "Barbell Curl", cat: "arms", equip: "barbell", level: "beginner", muscles: "Biceps, Brachialis" },
-  { name: "EZ-Bar Curl", cat: "arms", equip: "barbell", level: "beginner", muscles: "Biceps, Brachialis (wrist-friendly)" },
-  { name: "Preacher Curl (EZ-Bar)", cat: "arms", equip: "barbell", level: "beginner", muscles: "Biceps Lower Head" },
-  { name: "Skull Crusher (EZ-Bar)", cat: "arms", equip: "barbell", level: "intermediate", muscles: "Triceps Long Head" },
-  { name: "Barbell Reverse Curl", cat: "arms", equip: "barbell", level: "beginner", muscles: "Brachioradialis, Biceps" },
-  { name: "Barbell Wrist Curl", cat: "arms", equip: "barbell", level: "beginner", muscles: "Forearm Flexors" },
-  { name: "Dumbbell Curl (Alternating)", cat: "arms", equip: "dumbbell", level: "beginner", muscles: "Biceps, Brachialis" },
-  { name: "Hammer Curl", cat: "arms", equip: "dumbbell", level: "beginner", muscles: "Brachialis, Brachioradialis" },
-  { name: "Incline Dumbbell Curl", cat: "arms", equip: "dumbbell", level: "beginner", muscles: "Biceps Long Head" },
-  { name: "Concentration Curl", cat: "arms", equip: "dumbbell", level: "beginner", muscles: "Biceps Peak" },
-  { name: "Zottman Curl", cat: "arms", equip: "dumbbell", level: "intermediate", muscles: "Full Bicep + Brachioradialis" },
-  { name: "Dumbbell Overhead Tricep Extension", cat: "arms", equip: "dumbbell", level: "beginner", muscles: "Triceps Long Head" },
-  { name: "Dumbbell Kickback", cat: "arms", equip: "dumbbell", level: "beginner", muscles: "Triceps Lateral Head" },
-  { name: "Dumbbell Skull Crusher", cat: "arms", equip: "dumbbell", level: "intermediate", muscles: "Triceps" },
-  { name: "Reverse Wrist Curl (Dumbbell)", cat: "arms", equip: "dumbbell", level: "beginner", muscles: "Forearm Extensors" },
-  { name: "Cable Curl (Bar)", cat: "arms", equip: "cable", level: "beginner", muscles: "Biceps (constant tension)" },
-  { name: "Cable Curl (Rope)", cat: "arms", equip: "cable", level: "beginner", muscles: "Biceps, Brachialis" },
-  { name: "Overhead Cable Curl", cat: "arms", equip: "cable", level: "intermediate", muscles: "Biceps Long Head (peak)" },
-  { name: "Cable Pushdown (Rope)", cat: "arms", equip: "cable", level: "beginner", muscles: "Triceps Lateral Head" },
-  { name: "Cable Pushdown (Straight Bar)", cat: "arms", equip: "cable", level: "beginner", muscles: "Triceps" },
-  { name: "Overhead Cable Tricep Extension", cat: "arms", equip: "cable", level: "beginner", muscles: "Triceps Long Head" },
-  { name: "Single-Arm Cable Pushdown", cat: "arms", equip: "cable", level: "beginner", muscles: "Triceps (unilateral)" },
-  { name: "Bicep Curl Machine", cat: "arms", equip: "machine", level: "beginner", muscles: "Biceps" },
-  { name: "Preacher Curl Machine", cat: "arms", equip: "machine", level: "beginner", muscles: "Biceps Lower Head" },
-  { name: "Tricep Pushdown Machine", cat: "arms", equip: "machine", level: "beginner", muscles: "Triceps" },
-  { name: "Tricep Dips (Bench)", cat: "arms", equip: "bodyweight", level: "beginner", muscles: "Triceps, Chest" },
-  { name: "Parallel Bar Dips (Tricep Focus)", cat: "arms", equip: "bodyweight", level: "intermediate", muscles: "Triceps" },
-  // LEGS
-  { name: "Barbell Back Squat", cat: "legs", equip: "barbell", level: "intermediate", muscles: "Quads, Glutes, Hamstrings, Core" },
-  { name: "Barbell Front Squat", cat: "legs", equip: "barbell", level: "advanced", muscles: "Quads, Glutes, Core (upright torso)" },
-  { name: "Barbell Lunge", cat: "legs", equip: "barbell", level: "intermediate", muscles: "Quads, Glutes, Hamstrings" },
-  { name: "Barbell Hip Thrust", cat: "legs", equip: "barbell", level: "intermediate", muscles: "Glutes (max contraction)" },
-  { name: "Barbell Step-Up", cat: "legs", equip: "barbell", level: "intermediate", muscles: "Quads, Glutes" },
-  { name: "Barbell Romanian Deadlift", cat: "legs", equip: "barbell", level: "intermediate", muscles: "Hamstrings, Glutes, Lower Back" },
-  { name: "Barbell Sumo Squat", cat: "legs", equip: "barbell", level: "intermediate", muscles: "Inner Thighs, Glutes, Quads" },
-  { name: "Barbell Calf Raise (Standing)", cat: "legs", equip: "barbell", level: "beginner", muscles: "Gastrocnemius, Soleus" },
-  { name: "Barbell Bulgarian Split Squat", cat: "legs", equip: "barbell", level: "advanced", muscles: "Quads, Glutes, Hip Flexors" },
-  { name: "Goblet Squat", cat: "legs", equip: "dumbbell", level: "beginner", muscles: "Quads, Glutes, Core" },
-  { name: "Dumbbell Lunge (Alternating)", cat: "legs", equip: "dumbbell", level: "beginner", muscles: "Quads, Glutes" },
-  { name: "Dumbbell Step-Up", cat: "legs", equip: "dumbbell", level: "beginner", muscles: "Quads, Glutes" },
-  { name: "Dumbbell Hip Thrust", cat: "legs", equip: "dumbbell", level: "beginner", muscles: "Glutes" },
-  { name: "Dumbbell Romanian Deadlift", cat: "legs", equip: "dumbbell", level: "beginner", muscles: "Hamstrings, Glutes" },
-  { name: "Dumbbell Bulgarian Split Squat", cat: "legs", equip: "dumbbell", level: "intermediate", muscles: "Quads, Glutes, Balance" },
-  { name: "Dumbbell Sumo Squat", cat: "legs", equip: "dumbbell", level: "beginner", muscles: "Inner Thighs, Glutes" },
-  { name: "Dumbbell Calf Raise (Standing)", cat: "legs", equip: "dumbbell", level: "beginner", muscles: "Calves" },
-  { name: "Leg Press", cat: "legs", equip: "machine", level: "beginner", muscles: "Quads, Glutes, Hamstrings" },
-  { name: "Hack Squat Machine", cat: "legs", equip: "machine", level: "intermediate", muscles: "Quads, Glutes" },
-  { name: "Leg Extension", cat: "legs", equip: "machine", level: "beginner", muscles: "Quadriceps (isolation)" },
-  { name: "Lying Leg Curl", cat: "legs", equip: "machine", level: "beginner", muscles: "Hamstrings" },
-  { name: "Seated Leg Curl", cat: "legs", equip: "machine", level: "beginner", muscles: "Hamstrings" },
-  { name: "Seated Calf Raise Machine", cat: "legs", equip: "machine", level: "beginner", muscles: "Soleus" },
-  { name: "Standing Calf Raise Machine", cat: "legs", equip: "machine", level: "beginner", muscles: "Gastrocnemius" },
-  { name: "Hip Abductor Machine", cat: "legs", equip: "machine", level: "beginner", muscles: "Gluteus Medius, TFL" },
-  { name: "Hip Adductor Machine", cat: "legs", equip: "machine", level: "beginner", muscles: "Inner Thighs (Adductors)" },
-  { name: "Glute Kickback Machine", cat: "legs", equip: "machine", level: "beginner", muscles: "Glutes" },
-  { name: "Smith Machine Squat", cat: "legs", equip: "machine", level: "beginner", muscles: "Quads, Glutes" },
-  { name: "Cable Hip Kickback", cat: "legs", equip: "cable", level: "beginner", muscles: "Glutes" },
-  { name: "Cable Hip Abduction", cat: "legs", equip: "cable", level: "beginner", muscles: "Gluteus Medius" },
-  { name: "Cable Romanian Deadlift", cat: "legs", equip: "cable", level: "intermediate", muscles: "Hamstrings, Glutes" },
-  { name: "Bodyweight Squat", cat: "legs", equip: "bodyweight", level: "beginner", muscles: "Quads, Glutes, Hamstrings" },
-  { name: "Pistol Squat", cat: "legs", equip: "bodyweight", level: "advanced", muscles: "Quads, Glutes, Balance" },
-  { name: "Jump Squat", cat: "legs", equip: "bodyweight", level: "intermediate", muscles: "Explosive Legs, Calves" },
-  { name: "Glute Bridge", cat: "legs", equip: "bodyweight", level: "beginner", muscles: "Glutes, Hamstrings" },
-  { name: "Single-Leg Glute Bridge", cat: "legs", equip: "bodyweight", level: "intermediate", muscles: "Glutes, Hamstrings (unilateral)" },
-  { name: "Walking Lunge", cat: "legs", equip: "bodyweight", level: "beginner", muscles: "Quads, Glutes" },
-  { name: "Reverse Lunge", cat: "legs", equip: "bodyweight", level: "beginner", muscles: "Quads, Glutes" },
-  { name: "Lateral Lunge", cat: "legs", equip: "bodyweight", level: "beginner", muscles: "Inner Thighs, Glutes" },
-  { name: "Donkey Kick", cat: "legs", equip: "bodyweight", level: "beginner", muscles: "Glutes" },
-  { name: "Fire Hydrant", cat: "legs", equip: "bodyweight", level: "beginner", muscles: "Gluteus Medius" },
-  { name: "Bodyweight Calf Raise (Standing)", cat: "legs", equip: "bodyweight", level: "beginner", muscles: "Gastrocnemius" },
-  { name: "Wall Sit", cat: "legs", equip: "bodyweight", level: "beginner", muscles: "Quadriceps (isometric)" },
-  // CORE
-  { name: "Plank", cat: "core", equip: "bodyweight", level: "beginner", muscles: "Transverse Abs, All Core" },
-  { name: "Side Plank", cat: "core", equip: "bodyweight", level: "beginner", muscles: "Obliques, Hip Abductors" },
-  { name: "Crunch", cat: "core", equip: "bodyweight", level: "beginner", muscles: "Rectus Abdominis" },
-  { name: "Bicycle Crunch", cat: "core", equip: "bodyweight", level: "beginner", muscles: "Obliques, Abs" },
-  { name: "Reverse Crunch", cat: "core", equip: "bodyweight", level: "beginner", muscles: "Lower Abs" },
-  { name: "Lying Leg Raise", cat: "core", equip: "bodyweight", level: "intermediate", muscles: "Lower Abs, Hip Flexors" },
-  { name: "Hanging Leg Raise", cat: "core", equip: "bodyweight", level: "advanced", muscles: "Lower Abs, Obliques" },
-  { name: "Hanging Knee Raise", cat: "core", equip: "bodyweight", level: "intermediate", muscles: "Lower Abs" },
-  { name: "Dragon Flag", cat: "core", equip: "bodyweight", level: "advanced", muscles: "Full Core, Hip Flexors" },
-  { name: "V-Up", cat: "core", equip: "bodyweight", level: "intermediate", muscles: "Full Abs" },
-  { name: "Flutter Kick", cat: "core", equip: "bodyweight", level: "beginner", muscles: "Lower Abs" },
-  { name: "Mountain Climber", cat: "core", equip: "bodyweight", level: "beginner", muscles: "Core, Hip Flexors, Cardio" },
-  { name: "Russian Twist (Bodyweight)", cat: "core", equip: "bodyweight", level: "beginner", muscles: "Obliques" },
-  { name: "Windshield Wiper", cat: "core", equip: "bodyweight", level: "advanced", muscles: "Obliques, Lower Abs" },
-  { name: "Dead Bug", cat: "core", equip: "bodyweight", level: "beginner", muscles: "Deep Core, Stability" },
-  { name: "Bird Dog", cat: "core", equip: "bodyweight", level: "beginner", muscles: "Core, Glutes, Balance" },
-  { name: "Hollow Body Hold", cat: "core", equip: "bodyweight", level: "intermediate", muscles: "Full Core" },
-  { name: "Ab Wheel Rollout", cat: "core", equip: "other", level: "advanced", muscles: "Full Core, Lats, Shoulders" },
-  { name: "Cable Crunch", cat: "core", equip: "cable", level: "beginner", muscles: "Rectus Abdominis" },
-  { name: "Pallof Press", cat: "core", equip: "cable", level: "intermediate", muscles: "Anti-Rotation Core" },
-  { name: "Cable Woodchop", cat: "core", equip: "cable", level: "intermediate", muscles: "Obliques, Core" },
-  { name: "Cable Side Bend", cat: "core", equip: "cable", level: "beginner", muscles: "Obliques" },
-  { name: "Ab Machine Crunch", cat: "core", equip: "machine", level: "beginner", muscles: "Rectus Abdominis" },
-  { name: "Roman Chair Sit-Up", cat: "core", equip: "machine", level: "beginner", muscles: "Abs, Hip Flexors" },
-  { name: "Dumbbell Side Bend", cat: "core", equip: "dumbbell", level: "beginner", muscles: "Obliques" },
-  { name: "Dumbbell Russian Twist", cat: "core", equip: "dumbbell", level: "beginner", muscles: "Obliques" },
-  { name: "Barbell Rollout", cat: "core", equip: "barbell", level: "advanced", muscles: "Full Core, Lats" },
-  { name: "Landmine Rotation", cat: "core", equip: "barbell", level: "intermediate", muscles: "Obliques, Core" },
-  // CARDIO
-  { name: "Treadmill Running", cat: "cardio", equip: "machine", level: "beginner", muscles: "Full Body Cardiovascular" },
-  { name: "Incline Treadmill Walk", cat: "cardio", equip: "machine", level: "beginner", muscles: "Calves, Glutes, Cardio" },
-  { name: "Elliptical Trainer", cat: "cardio", equip: "machine", level: "beginner", muscles: "Low-Impact Full Body Cardio" },
-  { name: "Stationary Bike", cat: "cardio", equip: "machine", level: "beginner", muscles: "Quads, Calves, Cardio" },
-  { name: "Rowing Machine (Erg)", cat: "cardio", equip: "machine", level: "intermediate", muscles: "Back, Legs, Arms — Full Body" },
-  { name: "Stair Climber", cat: "cardio", equip: "machine", level: "beginner", muscles: "Glutes, Quads, Calves" },
-  { name: "Ski Erg", cat: "cardio", equip: "machine", level: "intermediate", muscles: "Lats, Core, Arms, Cardio" },
-  { name: "Assault Bike", cat: "cardio", equip: "machine", level: "advanced", muscles: "Full Body, Max Cardio Output" },
-  { name: "Battle Ropes", cat: "cardio", equip: "other", level: "intermediate", muscles: "Shoulders, Arms, Core, Cardio" },
-  { name: "Jump Rope", cat: "cardio", equip: "other", level: "beginner", muscles: "Calves, Coordination, Cardio" },
-  { name: "Box Jump", cat: "cardio", equip: "other", level: "intermediate", muscles: "Legs, Glutes, Explosive Power" },
-  { name: "Burpee", cat: "cardio", equip: "bodyweight", level: "intermediate", muscles: "Full Body, Explosive" },
-  { name: "High Knees", cat: "cardio", equip: "bodyweight", level: "beginner", muscles: "Core, Hip Flexors, Cardio" },
-  { name: "Jumping Jacks", cat: "cardio", equip: "bodyweight", level: "beginner", muscles: "Full Body Warmup / Cardio" },
-  { name: "Sprint Intervals", cat: "cardio", equip: "bodyweight", level: "advanced", muscles: "Legs, Full Body Cardio" },
-  { name: "Bear Crawl", cat: "cardio", equip: "bodyweight", level: "intermediate", muscles: "Full Body, Core Stability" },
-  { name: "Sled Push", cat: "cardio", equip: "other", level: "intermediate", muscles: "Legs, Glutes, Cardio" },
-  { name: "Sled Pull", cat: "cardio", equip: "other", level: "intermediate", muscles: "Back, Arms, Cardio" },
-  { name: "Farmer's Carry", cat: "cardio", equip: "dumbbell", level: "intermediate", muscles: "Grip, Core, Traps, Cardio" },
-  { name: "Kettlebell Swing", cat: "cardio", equip: "other", level: "intermediate", muscles: "Glutes, Hamstrings, Core" },
-  // FULL BODY
-  { name: "Barbell Clean", cat: "full", equip: "barbell", level: "advanced", muscles: "Full Posterior Chain, Traps" },
-  { name: "Power Clean", cat: "full", equip: "barbell", level: "advanced", muscles: "Full Body Explosive" },
-  { name: "Hang Clean", cat: "full", equip: "barbell", level: "advanced", muscles: "Hamstrings, Traps, Core" },
-  { name: "Barbell Snatch", cat: "full", equip: "barbell", level: "advanced", muscles: "Full Body Olympic Lift" },
-  { name: "Hang Snatch", cat: "full", equip: "barbell", level: "advanced", muscles: "Full Body, Explosiveness" },
-  { name: "Barbell Thruster", cat: "full", equip: "barbell", level: "advanced", muscles: "Legs, Shoulders, Core" },
-  { name: "Dumbbell Thruster", cat: "full", equip: "dumbbell", level: "intermediate", muscles: "Legs, Shoulders, Core" },
-  { name: "Clean and Press", cat: "full", equip: "barbell", level: "advanced", muscles: "Full Body" },
-  { name: "Turkish Get-Up (Dumbbell)", cat: "full", equip: "dumbbell", level: "advanced", muscles: "Full Body, Stability" },
-  { name: "Kettlebell Turkish Get-Up", cat: "full", equip: "other", level: "advanced", muscles: "Full Body, Stability" },
-  { name: "Kettlebell Clean and Press", cat: "full", equip: "other", level: "intermediate", muscles: "Full Body" },
-  { name: "Man Maker", cat: "full", equip: "dumbbell", level: "advanced", muscles: "Full Body, Metabolic Conditioning" },
-  { name: "Burpee Pull-Up", cat: "full", equip: "bodyweight", level: "advanced", muscles: "Full Body" },
-  { name: "Muscle-Up", cat: "full", equip: "bodyweight", level: "advanced", muscles: "Back, Chest, Triceps" },
-  { name: "Bear Complex", cat: "full", equip: "barbell", level: "advanced", muscles: "Full Body Olympic Compound" },
-  { name: "Wall Ball", cat: "full", equip: "other", level: "intermediate", muscles: "Legs, Shoulders, Core" },
-  { name: "Sandbag Carry", cat: "full", equip: "other", level: "intermediate", muscles: "Full Body, Grip, Core" },
-  { name: "Tire Flip", cat: "full", equip: "other", level: "advanced", muscles: "Full Posterior Chain, Legs" },
-  { name: "Dumbbell Complex", cat: "full", equip: "dumbbell", level: "intermediate", muscles: "Full Body Circuit" },
-];
+// GYM_BIBLE moved to ./exerciseDatabase.js (1,640 entries — original 215 curated + 1,425 from taxonomy import)
 
 // ── Fix #12: Starter Program Library ──────────────────────────────────
 // Helper to stamp N empty sets at a given rep prescription.
@@ -749,6 +560,7 @@ const EX_CATS = [
   { id: "core",      label: "Core",      color: "#D96B7A" },
   { id: "cardio",    label: "Cardio",    color: "#E8B64C" },
   { id: "full",      label: "Full Body", color: "#5BB588" },
+  { id: "mobility",  label: "Mobility",  color: "#7DC4B7" },
 ];
 const EX_EQUIPS = [
   { id: "all",        label: "All Equip" },
@@ -759,7 +571,7 @@ const EX_EQUIPS = [
   { id: "bodyweight", label: "Bodyweight" },
   { id: "other",      label: "Other" },
 ];
-const CAT_COLORS = { chest:"#E67E6B", back:"#4A9EB8", shoulders:"#D4A64E", arms:"#7FB069", legs:"#9E7ABF", core:"#D96B7A", cardio:"#E8B64C", full:"#5BB588", custom:"#888" };
+const CAT_COLORS = { chest:"#E67E6B", back:"#4A9EB8", shoulders:"#D4A64E", arms:"#7FB069", legs:"#9E7ABF", core:"#D96B7A", cardio:"#E8B64C", full:"#5BB588", mobility:"#7DC4B7", custom:"#888" };
 // Muscle families — when a user searches a muscle term in the picker, we look up
 // the related muscles that count as the "same family" from a training perspective.
 // E.g. Hammer Curl's anatomical primary muscle is the Brachialis, but every lifter
@@ -4665,7 +4477,8 @@ export default function App() {
   }, []);
 
   const authedUser = firebaseUser?.displayName || firebaseUser?.email?.split("@")[0] || "";
-  const [data, save] = useStorage(firebaseUser?.uid);
+  const [data, save, saveError] = useStorage(firebaseUser?.uid);
+  const isOnline = useOnlineStatus();
   const [view, setView] = useState("home");
   const [viewKey, setViewKey] = useState(0);
   const [viewDir, setViewDir] = useState(1);
@@ -4831,6 +4644,7 @@ export default function App() {
       @keyframes bl-slide-r { from { opacity:0; transform:translateX(22px); } to { opacity:1; transform:translateX(0); } }
       @keyframes bl-slide-l { from { opacity:0; transform:translateX(-22px); } to { opacity:1; transform:translateX(0); } }
       @keyframes bl-card-in { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+      @keyframes bl-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
     `;
     document.head.appendChild(style);
   }, []);
@@ -5005,7 +4819,7 @@ export default function App() {
     const cleaned = { ...workout, labels, label: labels[0] || null, duration: Math.round((Date.now() - workout.startTime) / 60000), exercises: cleanedExercises };
     const prev = data.workouts;
     const notifUpdate = computeWorkoutNotifications(data, cleaned, prev);
-    save({ ...data, workouts: [cleaned, ...data.workouts], ...(notifUpdate || {}) });
+    save({ ...data, workouts: [cleaned, ...data.workouts], ...(notifUpdate || {}) }, { errorContext: "Couldn't sync your workout" });
     haptic([0, 60, 30, 60, 30, 120]);
     playComplete();
     setWorkout(null); setView("home");
@@ -6116,6 +5930,25 @@ export default function App() {
       {profileSavedFlash && (
         <div style={{ position: "fixed", bottom: "calc(92px + env(safe-area-inset-bottom, 0px))", left: "50%", transform: "translateX(-50%)", zIndex: 2100, background: "rgba(91,184,91,0.18)", border: "1px solid rgba(91,184,91,0.45)", borderRadius: 12, padding: "10px 18px", color: "#5bb85b", fontSize: 13, fontWeight: 700, boxShadow: "0 8px 32px rgba(0,0,0,0.35)", pointerEvents: "none", animation: "bl-card-in 0.25s ease both" }}>
           ✓ Profile saved
+        </div>
+      )}
+      {/* Offline indicator — purely informational. Firestore's offline persistence already
+          queues writes locally and syncs them when the connection returns; this banner just
+          tells the user that's what's happening so silence isn't read as failure. */}
+      {!isOnline && (
+        <div role="status" aria-live="polite" style={{ position: "fixed", top: "calc(env(safe-area-inset-top, 0px))", left: 0, right: 0, zIndex: 2200, background: "rgba(232,182,76,0.18)", borderBottom: "1px solid rgba(232,182,76,0.45)", color: "#E8B64C", fontSize: 12, fontWeight: 600, padding: "7px 16px", textAlign: "center", letterSpacing: 0.3, backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", animation: "bl-card-in 0.25s ease both" }}>
+          <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "#E8B64C", marginRight: 8, verticalAlign: "middle", animation: "bl-pulse 2s ease-in-out infinite" }} />
+          You're offline · changes will sync when reconnected
+        </div>
+      )}
+      {/* Fix #69: Sync error banner — appears when a Firestore write fails so the user
+          can retry instead of losing the change silently. Auto-clears on next successful save. */}
+      {saveError && (
+        <div role="alert" aria-live="polite" style={{ position: "fixed", bottom: "calc(92px + env(safe-area-inset-bottom, 0px))", left: 12, right: 12, zIndex: 2150, maxWidth: 396, marginLeft: "auto", marginRight: "auto", background: "rgba(217,107,122,0.18)", border: "1px solid rgba(217,107,122,0.55)", borderRadius: 12, padding: "12px 14px", color: "#F5C7CD", fontSize: 13, fontWeight: 600, boxShadow: "0 8px 32px rgba(0,0,0,0.45)", animation: "bl-card-in 0.25s ease both", display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 16, flexShrink: 0 }}>⚠</span>
+          <span style={{ flex: 1, lineHeight: 1.35 }}>{saveError.message} — check connection and try again.</span>
+          <button onClick={saveError.retry} style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer", flexShrink: 0, minHeight: 32 }}>Retry</button>
+          <button onClick={saveError.dismiss} aria-label="Dismiss" style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.6)", fontSize: 18, cursor: "pointer", padding: "0 4px", flexShrink: 0, lineHeight: 1 }}>×</button>
         </div>
       )}
       {showHistoryMenu && <HistoryMenu
